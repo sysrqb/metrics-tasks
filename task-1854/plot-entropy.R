@@ -3,39 +3,45 @@ library(reshape)
 library(scales)
 
 e <- read.csv("extracted.csv", header = FALSE,
-  col.names = c("validafter", "min_adv_bw", "relays", "linf", "graph"),
-  stringsAsFactor = FALSE)
+  col.names = c("validafter", "min_adv_bw", "relays", "linf",
+  "excl_adv_bw", "graph"), stringsAsFactor = FALSE)
 
 l <- e[e$graph == 'last', ]
-l <- data.frame(x = l$min_adv_bw, relays = l$relays, linf = l$linf)
+l <- data.frame(x = l$min_adv_bw, relays = l$relays,
+  excladvbw = l$excl_adv_bw, linf = l$linf)
 l <- melt(l, "x")
 ggplot(l, aes(x = x, y = value)) +
 geom_line() +
 facet_grid(variable ~ ., scales = "free_y") +
 scale_x_log10(name = "\nAdvertised bandwidth cutoff in B/s (log scale)") +
-scale_y_continuous(name = "") +
+scale_y_continuous(name = paste("Number of relays, excluded advertised",
+  "bandwidth, or linf\n")) +
 opts(title = paste("Consensus with valid-after time ", max(e$validafter),
   "\n", sep = ""))
 
 l <- e[e$graph == 'last', ]
-l <- data.frame(x = l$min_adv_bw, relays = l$relays, linf = l$linf)
+l <- data.frame(x = l$min_adv_bw, relays = l$relays,
+  excladvbw = l$excl_adv_bw, linf = l$linf)
 l <- melt(l, "x")
 ggplot(l, aes(x = x, y = value)) +
 geom_line() +
 facet_grid(variable ~ ., scales = "free_y") +
 scale_x_log10(name = "\nAdvertised bandwidth cutoff in B/s (log scale)") +
-scale_y_log10(name = "Number of relays or linf (log scale)") +
+scale_y_log10(name = paste("Number of relays, excluded advertised",
+  "bandwidth, or linf (log scale)\n")) +
 opts(title = paste("Consensus with valid-after time ", max(e$validafter),
   "\n", sep = ""))
 
 l <- e[e$graph == 'last' & e$min_adv_bw >= 10000 & e$min_adv_bw <= 100000, ]
-l <- data.frame(x = l$min_adv_bw, relays = l$relays, linf = l$linf)
+l <- data.frame(x = l$min_adv_bw, relays = l$relays,
+  excladvbw = l$excl_adv_bw, linf = l$linf)
 l <- melt(l, "x")
 ggplot(l, aes(x = x, y = value)) +
 geom_line() +
 facet_grid(variable ~ ., scales = "free_y") +
-scale_x_log10(name = "\nAdvertised bandwidth cutoff in B/s (log scale)") +
-scale_y_continuous(name = "") +
+scale_x_log10(name = "\nAdvertised bandwidth cutoff in B/s (zoomed, log scale)") +
+scale_y_continuous(name = paste("Number of relays, excluded advertised",
+  "bandwidth, or linf\n")) +
 opts(title = paste("Consensus with valid-after time ", max(e$validafter),
   "\n", sep = ""))
 
