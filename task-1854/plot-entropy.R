@@ -17,6 +17,17 @@ scale_y_continuous(name = "") +
 opts(title = paste("Consensus with valid-after time ", max(e$validafter),
   "\n", sep = ""))
 
+l <- e[e$graph == 'last', ]
+l <- data.frame(x = l$min_adv_bw, relays = l$relays, linf = l$linf)
+l <- melt(l, "x")
+ggplot(l, aes(x = x, y = value)) +
+geom_line() +
+facet_grid(variable ~ ., scales = "free_y") +
+scale_x_log10(name = "\nAdvertised bandwidth cutoff in B/s (log scale)") +
+scale_y_log10(name = "Number of relays or linf (log scale)") +
+opts(title = paste("Consensus with valid-after time ", max(e$validafter),
+  "\n", sep = ""))
+
 l <- e[e$graph == 'last' & e$min_adv_bw >= 10000 & e$min_adv_bw <= 100000, ]
 l <- data.frame(x = l$min_adv_bw, relays = l$relays, linf = l$linf)
 l <- melt(l, "x")
