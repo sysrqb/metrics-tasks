@@ -2,7 +2,27 @@ library(ggplot2)
 library(reshape)
 library(scales)
 
-e <- read.csv("extracted.csv", header = FALSE,
+p <- read.csv("prob-extracted.csv", header = FALSE,
+  col.names = c("validafter", "minadvbw", "advbw", "cumprob"),
+  stringsAsFactor = FALSE)
+p <- p[p$minadvbw >= 20480, ]
+c <- data.frame(x = p$advbw, y = p$cumprob,
+  colour = as.factor(p$minadvbw))
+ggplot(c, aes(x = x, y = y, colour = colour)) +
+geom_line() +
+scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
+scale_y_continuous(name = "Cumulated probability\n") +
+scale_colour_hue(name = "Adv. bw. cutoff in B/s") +
+opts(legend.position = "top")
+
+ggplot(c, aes(x = x, y = y, colour = colour)) +
+geom_line() +
+scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
+scale_y_log10(name = "Cumulated probability (log scale)\n") +
+scale_colour_hue(name = "Adv. bw. cutoff in B/s") +
+opts(legend.position = "top")
+
+e <- read.csv("linf-extracted.csv", header = FALSE,
   col.names = c("validafter", "min_adv_bw", "relays", "linf",
   "excl_adv_bw", "graph"), stringsAsFactor = FALSE)
 

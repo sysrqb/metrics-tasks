@@ -2,11 +2,11 @@ import os
 import sys
 
 def main():
-    out_file = open('extracted.csv', 'w')
+    out_file = open('linf-extracted.csv', 'w')
     prev_validafter, max_validafter = '', ''
     max_lines = []
     prev_relays, prev_min_adv_bw = 0, 0
-    for line in open('entropy.csv'):
+    for line in open('linf.csv'):
         parts = line.strip().split(',')
         validafter = parts[0]
         min_adv_bw = int(parts[1])
@@ -32,6 +32,12 @@ def main():
         prev_min_adv_bw = min_adv_bw
     for line in max_lines:
         out_file.write(line + ",last\n")
+    out_file.close()
+    prob_out_file = open('prob-extracted.csv', 'w')
+    for line in open('prob.csv'):
+        if line.startswith(max_validafter):
+            prob_out_file.write(line.strip() + '\n')
+    prob_out_file.close()
 
 if __name__ == '__main__':
     main()

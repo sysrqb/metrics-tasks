@@ -102,9 +102,12 @@ def load_server_desc(tar_file_path):
         tar_fh.close()
 
 def run(data):
+    """ Return tuple of two strings, one string containing linf values for
+        all possible advertised bandwidth cutoffs, and one containing
+        probability distributions for predefined cutoffs. """
     routers = []
     router = None
-    result_string = []
+    linf_string, prob_string = [], []
     Wed, Wee, Wgd, Wgg = 1, 1, 1, 1
 
     # parse consensus
@@ -151,6 +154,8 @@ def run(data):
     omitted_routers = 0
     min_adv_bw = routers[0].advertised_bw
 
+    cutoffs = [10240, 20480, 51200, 102400, 204800, 512000, 1048576]
+
     while(omitted_routers<len(routers)):
         total_bw = 0
 
@@ -170,10 +175,28 @@ def run(data):
             diff = abs(new_prob - router.prob)
             prob_diff.append(diff)
 
-        result_string.append(','.join([valid_after,
+        linf_string.append(','.join([valid_after,
                                       str(min_adv_bw),
                                       str(len(routers)-omitted_routers),
                                       str(max(prob_diff))]))
+
+        while len(cutoffs) > 0 and min_adv_bw > cutoffs[0]:
+            cumulated_prob = 0.0
+            prev_advertised_bw = 0
+            for router in routers:
+                if router.advertised_bw > cutoffs[0] and \
+                        prev_advertised_bw != router.advertised_bw:
+                    prob_string.append(','.join([valid_after,
+                                                 str(cutoffs[0]),
+                                                 str(prev_advertised_bw),
+                                                 str(cumulated_prob)]))
+                prev_advertised_bw = router.advertised_bw
+                cumulated_prob += float(router.bandwidth)/float(total_bw)
+            prob_string.append(','.join([valid_after,
+                                         str(cutoffs[0]),
+                                         str(prev_advertised_bw),
+                                         str(cumulated_prob)]))
+            cutoffs.pop(0)
 
         # remove routers with min adv_bw
         for router in routers:
@@ -184,7 +207,7 @@ def run(data):
                 min_adv_bw = router.advertised_bw
                 break
 
-    return '\n'.join(result_string)
+    return ('\n'.join(linf_string), '\n'.join(prob_string))
 
 def parse_args():
     usage = "Usage - python pyentropy.py [options]"
@@ -196,8 +219,10 @@ def parse_args():
                       help="Input AS GeoIP database")
     parser.add_option("-s", "--server_desc", dest="server_desc",
                       default=False, help="Server descriptors directory")
-    parser.add_option("-o", "--output", dest="output", default="entropy.csv",
-                      help="Output filename")
+    parser.add_option("-l", "--linf-output", dest="linf", default="linf.csv",
+                      help="linf output filename")
+    parser.add_option("-r", "--prob-output", dest="prob", default="prob.csv",
+                      help="Probabilities output filename")
     parser.add_option("-c", "--consensus", dest="consensus", default="in/consensus",
                       help="Input consensus dir")
     parser.add_option("-p", "--pickled_data", dest="pickled_data", default=False,
@@ -227,16 +252,21 @@ if __name__ == "__main__":
         with open('data.pkl', 'wb') as output:
             pickle.dump(descriptors, output)
 
-    with open(options.output, 'w') as out_fh:
-        for file_name in os.listdir(options.consensus):
-            file_path = os.path.join(options.consensus, file_name)
-            tar_fh = tarfile.open(file_path)
-            for member in tar_fh:
-                if not member.isfile():
-                    continue
-                tar_file_data=tar_fh.extractfile(member)
-                data=tar_file_data.read()
-                output_string = run(data)
-                if output_string:
-                    out_fh.write("%s\n" % (output_string))
-            tar_fh.close()
+    linf_fh = open(options.linf, 'w')
+    prob_fh = open(options.prob, 'w')
+    for file_name in os.listdir(options.consensus):
+        file_path = os.path.join(options.consensus, file_name)
+        tar_fh = tarfile.open(file_path)
+        for member in tar_fh:
+            if not member.isfile():
+                continue
+            tar_file_data=tar_fh.extractfile(member)
+            data=tar_file_data.read()
+            (linf_string, prob_string) = run(data)
+            if linf_string:
+                linf_fh.write("%s\n" % (linf_string))
+            if prob_string:
+                prob_fh.write("%s\n" % (prob_string))
+        tar_fh.close()
+    linf_fh.close()
+    prob_fh.close()
