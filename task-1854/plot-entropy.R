@@ -11,14 +11,14 @@ c <- data.frame(x = p$advbw, y = p$cumprob,
 ggplot(c, aes(x = x, y = y, colour = colour)) +
 geom_line() +
 scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
-scale_y_continuous(name = "Cumulated probability\n") +
+scale_y_continuous(name = "Cumulative probability\n") +
 scale_colour_hue(name = "Adv. bw. cutoff in B/s") +
 opts(legend.position = "top")
 
 ggplot(c, aes(x = x, y = y, colour = colour)) +
 geom_line() +
 scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
-scale_y_log10(name = "Cumulated probability (log scale)\n") +
+scale_y_log10(name = "Cumulative probability (log scale)\n") +
 scale_colour_hue(name = "Adv. bw. cutoff in B/s") +
 opts(legend.position = "top")
 
