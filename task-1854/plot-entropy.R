@@ -45,6 +45,19 @@ scale_colour_hue(name = "Advertised bandwidth cutoff in B/s") +
 opts(title = paste("Consensus with valid-after time", max(p$validafter)),
   legend.position = "top")
 
+c <- p[p$advbw >= 1048576, ]
+c <- data.frame(advbw = c$advbw, prob = c$prob,
+  minadvbw = paste("c", c$minadvbw, sep = ""))
+c <- cast(c, advbw ~ minadvbw, value = "prob")
+c <- data.frame(advbw = c$advbw, rel = c$c1048576 / c$c20480)
+ggplot(c, aes(x = advbw, y = rel)) +
+geom_point(alpha = 0.25) +
+scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
+scale_y_continuous(name = paste("Ratio of probaility at 1 MiB/s cutoff",
+  "to probability at 20 KiB/s cutoff\n")) +
+opts(title = paste("Consensus with valid-after time ", max(p$validafter),
+  "\n", sep = ""), legend.position = "top")
+
 e <- read.csv("linf-extracted.csv", header = FALSE,
   col.names = c("validafter", "min_adv_bw", "relays", "linf",
   "excl_adv_bw", "graph"), stringsAsFactor = FALSE)
