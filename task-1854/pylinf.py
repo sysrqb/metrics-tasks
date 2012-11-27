@@ -11,7 +11,6 @@ rsync -arz --delete metrics.torproject.org::metrics-recent/relay-descriptors/con
 import sys
 import math
 import os
-import pygeoip
 import tarfile
 import pickle
 import StringIO
@@ -28,8 +27,6 @@ class Router:
         self.bandwidth = None
         self.advertised_bw = None
         self.hex_digest = None
-        self.country = None
-        self.as_no = None
         self.is_exit = None
         self.is_guard = None
 
@@ -37,8 +34,6 @@ class Router:
            self.hex_digest = b2a_hex(a2b_base64(values[2]+"="))
            self.advertised_bw = self.get_advertised_bw(self.hex_digest)
            ip = values[5]
-           #self.country = gi_db.country_code_by_addr(ip)
-           #self.as_no = self.get_as_details(ip)
 
     def add_weights(self, values):
            self.bandwidth = int(values[0].split('=')[1])
@@ -48,13 +43,6 @@ class Router:
                self.is_exit = True
            if "Guard" in values:
                self.is_guard = True
-
-    def get_as_details(self, ip):
-        try:
-            value = as_db.org_by_addr(str(ip)).split()
-            return value[0]
-        except:
-            return ""
 
     def get_advertised_bw(self, hex_digest):
         try:
@@ -213,10 +201,6 @@ def parse_args():
     usage = "Usage - python pyentropy.py [options]"
     parser = OptionParser(usage)
 
-    parser.add_option("-g", "--geoip", dest="gi_db", default="GeoIP.dat",
-                      help="Input GeoIP database")
-    parser.add_option("-a", "--as", dest="as_db", default="GeoIPASNum.dat",
-                      help="Input AS GeoIP database")
     parser.add_option("-s", "--server_desc", dest="server_desc",
                       default=False, help="Server descriptors directory")
     parser.add_option("-l", "--linf-output", dest="linf", default="linf.csv",
@@ -234,8 +218,6 @@ def parse_args():
 
 if __name__ == "__main__":
     options = parse_args()
-    gi_db = pygeoip.GeoIP(options.gi_db)
-    as_db = pygeoip.GeoIP(options.as_db)
 
     server_desc_files = []
     global descriptors
