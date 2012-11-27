@@ -3,7 +3,7 @@ library(reshape)
 library(scales)
 
 p <- read.csv("prob-extracted.csv", header = FALSE,
-  col.names = c("validafter", "minadvbw", "advbw", "cumprob"),
+  col.names = c("validafter", "minadvbw", "advbw", "cumprob", "prob"),
   stringsAsFactor = FALSE)
 p <- p[p$minadvbw >= 20480, ]
 c <- data.frame(x = p$advbw, y = p$cumprob,
@@ -13,14 +13,37 @@ geom_line() +
 scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
 scale_y_continuous(name = "Cumulative probability\n") +
 scale_colour_hue(name = "Adv. bw. cutoff in B/s") +
-opts(legend.position = "top")
+opts(title = paste("Consensus with valid-after time", max(p$validafter)),
+  legend.position = "top")
 
 ggplot(c, aes(x = x, y = y, colour = colour)) +
 geom_line() +
 scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
 scale_y_log10(name = "Cumulative probability (log scale)\n") +
 scale_colour_hue(name = "Adv. bw. cutoff in B/s") +
-opts(legend.position = "top")
+opts(title = paste("Consensus with valid-after time", max(p$validafter)),
+  legend.position = "top")
+
+p <- p[p$minadvbw == 20480 | p$minadvbw == 1048576, ]
+c <- data.frame(x = p$advbw, y = p$prob,
+  colour = as.factor(p$minadvbw))
+ggplot(c, aes(x = x, y = y, colour = colour)) +
+geom_point(alpha = 0.25) +
+scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
+scale_y_continuous(name = paste("Single relay probability, *not*",
+  "probability distribution function\n")) +
+scale_colour_hue(name = "Advertised bandwidth cutoff in B/s") +
+opts(title = paste("Consensus with valid-after time", max(p$validafter)),
+  legend.position = "top")
+
+ggplot(c, aes(x = x, y = y, colour = colour)) +
+geom_point(alpha = 0.25) +
+scale_x_log10(name = "\nAdvertised bandwidth in B/s (log scale)") +
+scale_y_log10(name = paste("Single relay probability, *not*",
+  "probability distribution function (log scale)\n")) +
+scale_colour_hue(name = "Advertised bandwidth cutoff in B/s") +
+opts(title = paste("Consensus with valid-after time", max(p$validafter)),
+  legend.position = "top")
 
 e <- read.csv("linf-extracted.csv", header = FALSE,
   col.names = c("validafter", "min_adv_bw", "relays", "linf",

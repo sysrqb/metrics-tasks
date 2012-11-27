@@ -168,8 +168,8 @@ def run(data):
                                       str(len(routers)-omitted_routers),
                                       str(max(prob_diff))]))
 
-        while len(cutoffs) > 0 and min_adv_bw > cutoffs[0]:
-            cumulated_prob = 0.0
+        while len(cutoffs) > 0 and min_adv_bw >= cutoffs[0]:
+            prev_prob, cumulated_prob = 0.0, 0.0
             prev_advertised_bw = 0
             for router in routers:
                 if router.advertised_bw > cutoffs[0] and \
@@ -177,13 +177,16 @@ def run(data):
                     prob_string.append(','.join([valid_after,
                                                  str(cutoffs[0]),
                                                  str(prev_advertised_bw),
-                                                 str(cumulated_prob)]))
+                                                 str(cumulated_prob),
+                                                 str(prev_prob)]))
                 prev_advertised_bw = router.advertised_bw
-                cumulated_prob += float(router.bandwidth)/float(total_bw)
+                prev_prob = float(router.bandwidth)/float(total_bw)
+                cumulated_prob += prev_prob
             prob_string.append(','.join([valid_after,
                                          str(cutoffs[0]),
                                          str(prev_advertised_bw),
-                                         str(cumulated_prob)]))
+                                         str(cumulated_prob),
+                                         str(prev_prob)]))
             cutoffs.pop(0)
 
         # remove routers with min adv_bw
