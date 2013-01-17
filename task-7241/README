@@ -1,0 +1,22 @@
+Uses stem to parse network consensus documents to determine frac_relays and frac_cw based on fingerprint.
+
+*Definitions*
+
+Let Y be the consensus listed (now) and X the consensus some hours ago (now - hours).
+
+Let intersection(X,Y) be the routers in both X and Y based on fingerprint.
+
+frac_relay is count(intersection(X,Y))/count(Y).
+
+frac_cw is the sum of consensus weights in Y over intersection(X,Y) divided by the sum of consensus weights in Y.
+
+*Notes*
+
+Output is in CSV format and does not include a header. Fields are consensus, hour, frac_relays, frac_cw, month, day, and day of week.
+
+Unavailable network consensus documents based on path are ignored.
+
+Change initial_time_info_bound, final_time_info_bound, initial_time_data_bound, and final_time_data_bound to explore different time ranges. initial_time_data_bound should be at least 168 hours before initial_time_info_bound.
+
+Four months of hourly data (fingerprint, consensus weights) uses about 1.5GB of space.
+
