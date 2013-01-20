@@ -1,7 +1,7 @@
 import sys
 from datetime import datetime, timedelta
 
-from stem.descriptor.networkstatus import NetworkStatusDocumentV3
+from stem.descriptor import parse_file
 
 # http://stackoverflow.com/questions/82831/how-do-i-check-if-a-file-exists-using-python
 def file_check(file_path):
@@ -49,16 +49,13 @@ while cur_datetime < final_time_data_bound - time_interval:
 	cur_filename = filename_from_time(cur_datetime)	
 
 	if file_check(cur_filepath) == True:
-		consensus_file = open(cur_filepath, 'r')
-		consensus_file.readline()
-		consensus = NetworkStatusDocumentV3(consensus_file.read())
-		consensus_file.close()
-
 		routers = {}
-		for router in consensus.routers:
-			routers[router.fingerprint] = router.bandwidth
 
-		router_data[cur_filename] = routers
+		with open(cur_filepath) as consensus_file:
+			for router in parse_file(consensus_file):
+				routers[router.fingerprint] = router.bandwidth
+
+			router_data[cur_filename] = routers
 
 # interval multipliers
 time_interval_list = [1,2,3,4,5,6,12,24,36,48,72,96,120,144,168] # hours
