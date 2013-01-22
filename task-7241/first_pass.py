@@ -1,106 +1,94 @@
-import sys
-from datetime import datetime, timedelta
+# calculate frac_relays, frac_cw to compare consensus documents over time
 
+# let Y be the base document and X be some hours before the base document
+# frac_relays = count(intersection(Y, X)) / count(Y)
+# frac_cw = sum(cw(Y) over intersection(Y,X)) / sum(cw(Y)) 
+
+import os
+from datetime import datetime, timedelta
 from stem.descriptor import parse_file
 
-# http://stackoverflow.com/questions/82831/how-do-i-check-if-a-file-exists-using-python
-def file_check(file_path):
-	try:
-		with open(file_path) as f:
-			return True
-	except IOError:
-		return False
-
+# generate expected consensus filepath from time
 def filepath_from_time(cur_datetime):
-	consensus_path = 'consensuses-'
-	consensus_path += cur_datetime.strftime('%Y-%m')
-	consensus_path += '/'
-	consensus_path += cur_datetime.strftime('%d')
-	consensus_path += '/'
-	consensus_path += cur_datetime.strftime('%Y-%m-%d-%H-%M-%S')
-	consensus_path += '-consensus'
+	return os.path.join(
+		'consensuses-%s' % cur_datetime.strftime('%Y-%m'),
+		cur_datetime.strftime('%d'),
+		'%s-consensus' % cur_datetime.strftime('%Y-%m-%d-%H-%M-%S'),
+	)
 
-	return consensus_path
+# router bw storage by fingerprint
+router_data = {}
 
-def filename_from_time(cur_datetime):
-	consensus_filename = cur_datetime.strftime('%Y-%m-%d-%H-%M-%S')
-	consensus_filename += '-consensus'
-
-	return consensus_filename
-
+# unit time interval
 time_interval = timedelta(0, 60*60) # one hour
+
+# interval multipliers for analysis: 1 hour to 7 days
+time_interval_list = [1,2,3,4,5,6,12,24,36,48,72,96,120,144,168] # hours
 
 # base consensuses for examination
 initial_time_info_bound = datetime(2012, 1, 1) # inclusive
 final_time_info_bound = datetime(2013, 1, 1) # exclusive
-
-router_data = {}
 
 # data range for consensuses
 initial_time_data_bound = datetime(2011, 12, 1) # inclusive
 final_time_data_bound = datetime(2013, 1, 1) # exclusive
 
 # load information
-cur_datetime = initial_time_data_bound - time_interval
-while cur_datetime < final_time_data_bound - time_interval:
-	cur_datetime += time_interval
-
+cur_datetime = initial_time_data_bound
+while cur_datetime < final_time_data_bound:
 	cur_filepath = filepath_from_time(cur_datetime)
-	cur_filename = filename_from_time(cur_datetime)	
+	cur_filename = os.path.basename(cur_filepath)	
 
-	if file_check(cur_filepath) == True:
-		routers = {}
-
+	try:
 		with open(cur_filepath) as consensus_file:
-			for router in parse_file(consensus_file):
-				routers[router.fingerprint] = router.bandwidth
+			router_data[cur_filename] = dict([(r.fingerprint, r.bandwidth) 
+				for r in parse_file(consensus_file)])
+	except IOError:
+		pass # file does not exist (possible situation) and iterate
 
-			router_data[cur_filename] = routers
-
-# interval multipliers
-time_interval_list = [1,2,3,4,5,6,12,24,36,48,72,96,120,144,168] # hours
-
-# iterate over base consensuses
-cur_datetime = initial_time_info_bound - time_interval
-while cur_datetime < final_time_info_bound - time_interval:
+	# next file to read
 	cur_datetime += time_interval
 
+# iterate over base consensuses for frac_relays, frac_cw
+cur_datetime = initial_time_info_bound
+while cur_datetime < final_time_info_bound:
 	cur_filepath = filepath_from_time(cur_datetime) # current
-	cur_filename = filename_from_time(cur_datetime) # current	
+	cur_filename = os.path.basename(cur_filepath) # current	
 
-	if file_check(cur_filepath) == True:
+	# find base data, if data exists
+	if cur_filename in router_data:
 		base_routers = router_data[cur_filename]
-		base_router_count = 0
-		base_router_bandwidth = 0
-		for fingerprint in router_data[cur_filename].keys():
-			base_router_count += 1
-			base_router_bandwidth += router_data[cur_filename][fingerprint]
+		base_router_count = len(router_data[cur_filename])
+		base_router_bw = sum(router_data[cur_filename].values())
 
-		for comparison_time_interval_multiplier in time_interval_list:
-			comparison_time_interval = timedelta(0, comparison_time_interval_multiplier*60*60)
-			comparison_datetime = cur_datetime - comparison_time_interval
+		# for each analysis analysis interval, find comparison locator
+		for time_interval_multiplier in time_interval_list:
+			comp_time_interval = time_interval_multiplier*time_interval
+			comp_datetime = cur_datetime - comp_time_interval
 
-			comparison_filepath = filepath_from_time(comparison_datetime) # comparison
-			comparison_filename = filename_from_time(comparison_datetime) # comparison
+			comp_filepath = filepath_from_time(comp_datetime) # comp
+			comp_filename = os.path.basename(comp_filepath) # comp
 
-			if file_check(comparison_filepath) == True:
-				comparison_router_count = 0
-				comparison_router_bandwidth = 0
-				comparison_router_overlap_bandwidth = 0
-				base_router_overlap_bandwidth = 0
-				comparison_router_overlap_count = 0
+			# find comparison data, if data exists
+			if comp_filename in router_data:
+				router_overlap_count = 0
+				base_router_overlap_bw = 0
 		
-				for fingerprint in router_data[comparison_filename].keys():
-					comparison_router_count += 1
-					comparison_router_bandwidth += router_data[comparison_filename][fingerprint]
-
+				# determine intersection(Y,X) and sum cw over intersection(Y,X)
+				for fingerprint in router_data[comp_filename]:
 					if fingerprint in base_routers:
-						base_router_overlap_bandwidth += base_routers[fingerprint]
-						comparison_router_overlap_count += 1
-						comparison_router_overlap_bandwidth += router_data[comparison_filename][fingerprint]
+						router_overlap_count += 1
+						base_router_overlap_bw += base_routers[fingerprint]
 
-				frac_relays = float(comparison_router_overlap_count)/float(base_router_count)
-				frac_cw = float(base_router_overlap_bandwidth)/float(base_router_bandwidth)
+				# determine ratios
+				frac_relays = float(router_overlap_count)/float(base_router_count)
+				frac_cw = float(base_router_overlap_bw)/float(base_router_bw)
 
-				print '%s,%d,%f,%f,%d,%d,%s' % (cur_filename, comparison_time_interval_multiplier, frac_relays, frac_cw, cur_datetime.month, cur_datetime.day, cur_datetime.strftime('%w'))
+				# output
+				print '%s,%d,%f,%f,%d,%d,%s' % (cur_filename, time_interval_multiplier, 
+					frac_relays, frac_cw, cur_datetime.month, cur_datetime.day, 
+					cur_datetime.strftime('%w'))
+
+	# next base consensus		
+	cur_datetime += time_interval
 
