@@ -1,0 +1,50 @@
++------------------------------------------------------------------------+
+|     An implementation of the user counting algorithm suggested in      |
+|   Tor Tech Report 2012-10-001 for later integration with metrics-web   |
++------------------------------------------------------------------------+
+
+Instructions (for Debian Squeeze):
+
+Install Java 6 for descriptor parsing and PostgreSQL 8.4 for descriptor
+data storage and aggregation:
+
+  $ sudo apt-get install openjdk-6-jdk postgresql-8.4
+
+Create a database user and database:
+
+  $ sudo -u postgres createuser -P karsten
+  $ sudo -u postgres createdb -O karsten userstats
+  $ echo "password" > ~/.pgpass
+  $ chmod 0600 ~/.pgpass
+  $ psql -f init-userstats.sql userstats
+
+Create empty bin/, lib/, in/, status/, and out/ directories.
+
+Put required .jar files into the lib/ directory.  See metrics-lib.git for
+instructions:
+
+  - lib/commons-codec-1.6.jar
+  - lib/commons-compress-1.4.1.jar
+  - lib/descriptor.jar
+
+Run the run-userstats.sh script:
+
+  $ ./run-userstats.sh
+
+Be patient.
+
+Advanced stuff: the database can also be initialized using descriptor
+archives available at https://metrics.torproject.org/data.html.  Only
+relay consensuses, relay extra-info descriptors, and bridge descriptors
+are required.  Put them into the following directories, ideally after
+decompressing (but not extracting them) using bunzip2:
+
+  - in/relay-descriptors/    (consensuses-*.tar and extra-infos-*.tar)
+  - in/bridge-descriptors/   (bridge-descriptors-*.tar)
+
+Also comment out the rsync command in run-userstats.sh.  Then run
+run-userstats.sh.  After initializing the database, clean up the in/ and
+out/ directory and don't forget to put back the rsync command in
+run-userstats.sh.  It may be easier to set up separate instances of this
+tool for initializing the database and for running it on a regular basis.
+
