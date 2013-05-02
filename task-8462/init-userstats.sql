@@ -388,6 +388,8 @@ BEGIN
       last_start := cur.merged_start;
       last_end := cur.merged_end;
       last_val := cur.merged_val;
+      undo_end := NULL;
+      undo_val := NULL;
     END IF;
   END LOOP;
 
