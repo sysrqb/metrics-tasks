@@ -18,6 +18,14 @@ Create a database user and database:
   $ chmod 0600 ~/.pgpass
   $ psql -f init-userstats.sql userstats
 
+Run unit tests using pgTAP:
+
+  $ sudo apt-get install pgtap
+  $ psql -c 'CREATE SCHEMA tap;' userstats
+  $ PGOPTIONS=--search_path=tap psql -d userstats \
+    -f /usr/share/postgresql/8.4/contrib/pgtap.sql
+  $ pg_prove -d userstats test-userstats.sql
+
 Create empty bin/, lib/, in/, status/, and out/ directories.
 
 Put required .jar files into the lib/ directory.  See metrics-lib.git for
