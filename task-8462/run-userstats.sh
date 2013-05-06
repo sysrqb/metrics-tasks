@@ -6,6 +6,8 @@ rsync -arz --delete --exclude 'relay-descriptors/votes' metrics.torproject.org::
 echo `date` "Parsing descriptors."
 javac -d bin/ -cp lib/commons-codec-1.6.jar:lib/commons-compress-1.4.1.jar:lib/descriptor.jar src/Parse.java
 java -cp bin/:lib/commons-codec-1.6.jar:lib/commons-compress-1.4.1.jar:lib/descriptor.jar Parse
+#java -cp bin/:lib/commons-codec-1.6.jar:lib/commons-compress-1.4.1.jar:lib/descriptor.jar Parse --stats-date
+#java -cp bin/:lib/commons-codec-1.6.jar:lib/commons-compress-1.4.1.jar:lib/descriptor.jar Parse --desc-hour
 for i in $(ls out/*.sql)
 do
   echo `date` "Importing $i."

@@ -50,9 +50,10 @@ decompressing (but not extracting them) using bunzip2:
   - in/relay-descriptors/    (consensuses-*.tar and extra-infos-*.tar)
   - in/bridge-descriptors/   (bridge-descriptors-*.tar)
 
-Also comment out the rsync command in run-userstats.sh.  Then run
-run-userstats.sh.  After initializing the database, clean up the in/ and
-out/ directory and don't forget to put back the rsync command in
+Also comment out the rsync command in run-userstats.sh and add a
+--stats-date parameter to the java line (see commented out line).  Then
+run run-userstats.sh.  After initializing the database, clean up the in/
+and out/ directory and don't forget to put back the rsync command in
 run-userstats.sh.  It may be easier to set up separate instances of this
 tool for initializing the database and for running it on a regular basis.
 

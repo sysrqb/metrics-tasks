@@ -6,12 +6,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.SortedMap;
-import java.util.Stack;
 import java.util.TimeZone;
 import java.util.TreeMap;
 
@@ -28,28 +26,28 @@ import org.torproject.descriptor.RelayNetworkStatusConsensus;
 public class Parse {
 
   public static void main(String[] args) throws Exception {
-    detectBulkOrRegular();
+    parseArgs(args);
     parseRelayDescriptors();
     parseBridgeDescriptors();
     closeOutputFiles();
   }
 
-  private static boolean isBulkImport = false;
-  private static void detectBulkOrRegular() {
-    Stack<File> inFiles = new Stack<File>();
-    inFiles.add(new File("in"));
-    while (!inFiles.isEmpty()) {
-      File file = inFiles.pop();
-      if (file.isDirectory()) {
-        inFiles.addAll(Arrays.asList(file.listFiles()));
-      } else if (file.getName().endsWith(".tar") ||
-          file.getName().endsWith(".tar.bz2")) {
-        isBulkImport = true;
-        break;
-      } else {
-        isBulkImport = false;
-        break;
-      }
+  private static boolean writeToSingleFile = true;
+  private static boolean byStatsDateNotByDescHour = false;
+
+  private static void parseArgs(String[] args) {
+    if (args.length == 0) {
+      writeToSingleFile = true;
+    } else if (args.length == 1 && args[0].equals("--stats-date")) {
+      writeToSingleFile = false;
+      byStatsDateNotByDescHour = true;
+    } else if (args.length == 1 && args[0].equals("--desc-hour")) {
+      writeToSingleFile = false;
+      byStatsDateNotByDescHour = false;
+    } else {
+      System.err.println("Usage: java " + Parse.class.getName()
+          + " [ --stats-date | --desc-hour ]");
+      System.exit(1);
     }
   }
 
@@ -126,10 +124,12 @@ public class Parse {
         double reqs = ((double) e.getValue()) - 4.0;
         sum += reqs;
         writeOutputLine(fingerprint, "relay", "responses", country,
-            "", "", fromMillis, toMillis, reqs * intervalFraction);
+            "", "", fromMillis, toMillis, reqs * intervalFraction,
+            publishedMillis);
       }
       writeOutputLine(fingerprint, "relay", "responses", "", "",
-          "", fromMillis, toMillis, sum * intervalFraction);
+          "", fromMillis, toMillis, sum * intervalFraction,
+          publishedMillis);
     }
   }
 
@@ -171,7 +171,7 @@ public class Parse {
           break;
         }
         writeOutputLine(fingerprint, "relay", "bytes", "", "", "",
-            fromMillis, toMillis, writtenBytes);
+            fromMillis, toMillis, writtenBytes, publishedMillis);
       }
     }
   }
@@ -186,7 +186,7 @@ public class Parse {
           toUpperCase();
       if (statusEntry.getFlags().contains("Running")) {
         writeOutputLine(fingerprint, "relay", "status", "", "", "",
-            fromMillis, toMillis, 0.0);
+            fromMillis, toMillis, 0.0, fromMillis);
       }
     }
   }
@@ -262,14 +262,17 @@ public class Parse {
         double intervalFraction = ((double) (toMillis - fromMillis))
             / ((double) dirreqStatsIntervalLengthMillis);
         writeOutputLine(fingerprint, "bridge", "responses", "", "",
-            "", fromMillis, toMillis, resp * intervalFraction);
+            "", fromMillis, toMillis, resp * intervalFraction,
+            publishedMillis);
         parseBridgeRespByCategory(fingerprint, fromMillis, toMillis, resp,
-            dirreqStatsIntervalLengthMillis, "country", bridgeIps);
+            dirreqStatsIntervalLengthMillis, "country", bridgeIps,
+            publishedMillis);
         parseBridgeRespByCategory(fingerprint, fromMillis, toMillis, resp,
             dirreqStatsIntervalLengthMillis, "transport",
-            bridgeIpTransports);
+            bridgeIpTransports, publishedMillis);
         parseBridgeRespByCategory(fingerprint, fromMillis, toMillis, resp,
-            dirreqStatsIntervalLengthMillis, "version", bridgeIpVersions);
+            dirreqStatsIntervalLengthMillis, "version", bridgeIpVersions,
+            publishedMillis);
       }
     }
   }
@@ -277,7 +280,8 @@ public class Parse {
   private static void parseBridgeRespByCategory(String fingerprint,
       long fromMillis, long toMillis, double resp,
       long dirreqStatsIntervalLengthMillis, String category,
-      SortedMap<String, Integer> frequencies) throws IOException {
+      SortedMap<String, Integer> frequencies, long publishedMillis)
+      throws IOException {
     double total = 0.0;
     SortedMap<String, Double> frequenciesCopy =
         new TreeMap<String, Double>();
@@ -310,13 +314,13 @@ public class Parse {
       double val = resp * intervalFraction * e.getValue() / total;
       if (category.equals("country")) {
         writeOutputLine(fingerprint, "bridge", "responses", e.getKey(),
-            "", "", fromMillis, toMillis, val);
+            "", "", fromMillis, toMillis, val, publishedMillis);
       } else if (category.equals("transport")) {
         writeOutputLine(fingerprint, "bridge", "responses", "",
-            e.getKey(), "", fromMillis, toMillis, val);
+            e.getKey(), "", fromMillis, toMillis, val, publishedMillis);
       } else if (category.equals("version")) {
         writeOutputLine(fingerprint, "bridge", "responses", "", "",
-            e.getKey(), fromMillis, toMillis, val);
+            e.getKey(), fromMillis, toMillis, val, publishedMillis);
       }
     }
   }
@@ -359,7 +363,7 @@ public class Parse {
           break;
         }
         writeOutputLine(fingerprint, "bridge", "bytes", "",
-            "", "", fromMillis, toMillis, writtenBytes);
+            "", "", fromMillis, toMillis, writtenBytes, publishedMillis);
       }
     }
   }
@@ -370,8 +374,9 @@ public class Parse {
         > ONE_HOUR_MILLIS / 2) {
       return;
     }
-    long fromMillis = (status.getPublishedMillis()
-        / ONE_HOUR_MILLIS) * ONE_HOUR_MILLIS;
+    long publishedMillis = status.getPublishedMillis();
+    long fromMillis = (publishedMillis / ONE_HOUR_MILLIS)
+        * ONE_HOUR_MILLIS;
     long toMillis = fromMillis + ONE_HOUR_MILLIS;
     for (NetworkStatusEntry statusEntry :
         status.getStatusEntries().values()) {
@@ -379,7 +384,7 @@ public class Parse {
           toUpperCase();
       if (statusEntry.getFlags().contains("Running")) {
         writeOutputLine(fingerprint, "bridge", "status", "", "", "",
-            fromMillis, toMillis, 0.0);
+            fromMillis, toMillis, 0.0, publishedMillis);
       }
     }
   }
@@ -388,13 +393,14 @@ public class Parse {
       new HashMap<String, BufferedWriter>();
   private static void writeOutputLine(String fingerprint, String node,
       String metric, String country, String transport, String version,
-      long fromMillis, long toMillis, double val) throws IOException {
+      long fromMillis, long toMillis, double val, long publishedMillis)
+      throws IOException {
     if (fromMillis > toMillis) {
       return;
     }
     String fromDateTime = formatDateTimeMillis(fromMillis);
     String toDateTime = formatDateTimeMillis(toMillis);
-    BufferedWriter bw = getOutputFile(fromDateTime);
+    BufferedWriter bw = getOutputFile(fromDateTime, publishedMillis);
     bw.write(String.format("%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%.1f\n",
         fingerprint, node, metric, country, transport, version,
         fromDateTime, toDateTime, val));
@@ -410,11 +416,21 @@ public class Parse {
     return dateTimeFormat.format(millis);
   }
 
-  private static BufferedWriter getOutputFile(String fromDateTime)
-      throws IOException {
-    String outputFileName = isBulkImport
-        ? "out/userstats-" + fromDateTime.substring(0, 10) + ".sql"
-        : "out/userstats.sql";
+  private static BufferedWriter getOutputFile(String fromDateTime,
+      long publishedMillis) throws IOException {
+    String outputFileName;
+    if (writeToSingleFile) {
+      outputFileName = "out/userstats.sql";
+    } else if (byStatsDateNotByDescHour) {
+      outputFileName = "out/userstats-" + fromDateTime.substring(0, 10)
+          + ".sql";
+    } else {
+      String publishedHourDateTime = formatDateTimeMillis(
+          (publishedMillis / ONE_HOUR_MILLIS) * ONE_HOUR_MILLIS);
+      outputFileName = "out/userstats-"
+          + publishedHourDateTime.substring(0, 10) + "-"
+          + publishedHourDateTime.substring(11, 13) + ".sql";
+    }
     BufferedWriter bw = openOutputFiles.get(outputFileName);
     if (bw == null) {
       bw = openOutputFile(outputFileName);
