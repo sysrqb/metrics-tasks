@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+text {
+  font: 10px sans-serif;
+}
+
+</style>
+<body>
+<script src="d3.min.js"></script>
+
+<script>
+var diameter = 1200,
+    format = d3.format(",d"),
+    color = d3.scale.category20c();
+
+var bubble = d3.layout.pack()
+    .sort(null)
+    .size([diameter, diameter])
+    .padding(1.5);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", diameter)
+    .attr("height", diameter)
+    .attr("class", "bubble");
+
+d3.json("details.json", function(error, data) {
+  var by_as = {};
+  data.relays.forEach(function(relay) {
+    if (relay.running) {
+      if (!by_as.hasOwnProperty(relay.as_number)) {
+        by_as[relay.as_number] = { name: relay.as_name, children: [] };
+      }
+      by_as[relay.as_number].children.push({ name: relay.nickname ? relay.fingerprint : relay.nickname,
+                                             value: relay.consensus_weight });
+    }
+  });
+
+  var cutOff = 100 / 8 * 1000; // 100 Mbit/s
+  var bubbles = svg.selectAll(".node")
+      .data(bubble.nodes({ children: d3.values(by_as) }));
+  var node = bubbles.enter().append("g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+  node.append("circle")
+      .filter(function(d) { return d.children && d.name; })
+      .attr("r", function(d) { return d.r; })
+      .style("fill", "#888888")
+      .style("fill-opacity", ".25");
+
+  node.filter(function(d) { return !d.children;})
+    .append("image")
+      .attr("xlink:href", function(d) { return "tor-consensus-vis-node-" + (d.value > cutOff ? "onion" : "circle") + ".svg"; })
+      .attr("transform", function(d) { return "translate(" + -d.r + "," + -d.r + ")"; })
+      .attr("width", function(d) { return d.r * 2; })
+      .attr("height", function(d) { return d.r * 2; })
+      .attr("preserveAspectRatio", "xMidYMin");
+
+  node.filter(function(d) { return d.children && d.name; })
+    .each(function(d) {
+      var g = svg.append("g")
+        .attr("transform", "translate(" + d.x + "," + d.y + ")");
+      g.append("circle")
+        .attr("r", d.r)
+        .style("fill", "#000000")
+        .style("fill-opacity", "0")
+        .style("stroke", "none");
+      g.on("mouseover", function() {
+            svg.append("text")
+                .attr("transform", "translate(" + d.x + "," + (d.y - d.r) + ")")
+                .attr("id", "group-name")
+                .style("text-anchor", "middle")
+                .style("font-size", "14pt")
+                .text((d.name + "").substring(0, 20));
+          })
+       .on("mouseout", function() {
+            d3.select("#group-name").remove();
+          });
+    });
+
+  /*
+  node.filter(function(d) { return !d.children && d.value > cutOff; })
+    .append("text")
+      .attr("dy", ".3em")
+      .style("text-anchor", "middle")
+      .text(function(d) { return d.className; });
+   */
+
+  var title = svg.append("g")
+      .attr("transform", "translate(" + (diameter / 3) +", " + (diameter - 30) + ")");
+  title.append("text")
+      .text("by as")
+      .attr("text-anchor", "middle")
+      .attr("style", "font-size: 18pt");
+  title.append("text")
+      .text(data['relays_published'])
+      .attr("text-anchor", "middle")
+      .attr("dy", "15")
+      .attr("style", "font-size: 10pt");
+
+  var legendWidth = 270;
+  var legendHeight = 115;
+  var legendIconSize = 50;
+  var legendIconMargin = (legendHeight - legendIconSize * 2) / 3;
+  var legend = svg.append("g")
+      .attr("transform", "translate(" + (diameter - legendWidth - 10) +", " + (diameter - legendHeight - 10) + ")")
+  legend.append("rect")
+      .attr("width", legendWidth)
+      .attr("height", legendHeight)
+      .attr("fill", "#cccccc")
+      .attr("stroke", "#000000");
+  var legendOnion = legend.append("g")
+      .attr("transform", "translate(0, " + legendIconMargin + ")");
+  legendOnion.append("image")
+    .attr("xlink:href", "tor-consensus-vis-node-onion.svg")
+      .attr("width", legendIconSize)
+      .attr("height", legendIconSize)
+      .attr("preserveAspectRatio", "xMidYMin");
+  legendOnion.append("text")
+      .text("relays with at least " + (cutOff * 8 / 1000) + " Mbit/s of capacity")
+      .attr("text-anchor", "start")
+      .attr("dx", legendIconSize)
+      .attr("dy", legendIconSize / 2)
+  var legendCircle = legend.append("g")
+      .attr("transform", "translate(0, " + (legendIconSize + legendIconMargin * 2) + ")");
+  legendCircle.append("image")
+    .attr("xlink:href", "tor-consensus-vis-node-circle.svg")
+      .attr("width", legendIconSize)
+      .attr("height", legendIconSize)
+      .attr("preserveAspectRatio", "xMidYMin");
+  legendCircle.append("text")
+      .text("smaller relays")
+      .attr("text-anchor", "start")
+      .attr("dx", legendIconSize)
+      .attr("dy", legendIconSize / 2)
+});
+
+d3.select(self.frameElement).style("height", diameter + "px");
+
+</script>
