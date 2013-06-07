@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+text {
+  font: 10px sans-serif;
+}
+
+</style>
+<body>
+<script src="d3.min.js"></script>
+
+<script>
+var diameter = 800,
+    format = d3.format(",d"),
+    color = d3.scale.category20c();
+
+var bubble = d3.layout.pack()
+    .sort(null)
+    .size([diameter, diameter])
+    .padding(1.5);
+
+var svg = d3.select("body").append("svg")
+    .attr("width", diameter)
+    .attr("height", diameter)
+    .attr("class", "bubble");
+
+d3.json("details.json", function(error, data) {
+  var relays = [];
+  data["relays"].forEach(function(relay) {
+    if (0 != relay['consensus_weight'] && relay['running']) {
+      relays.push({ packageName: "Relays", className: relay['nickname'], value: relay["consensus_weight"] });
+    }
+  });
+
+  var cutOff = 100 / 8 * 1000; // 100 Mbit/s
+
+  var node = svg.selectAll(".node")
+      .data(bubble.nodes({ children: relays })
+        .filter(function(d) { return !d.children; }))
+    .enter().append("g")
+      .attr("class", "node")
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+
+  node.filter(function(d) { return !d.children;})
+    .append("image")
+      .attr("xlink:href", function(d) { return "tor-consensus-vis-node-" + (d.value > cutOff ? "onion" : "circle") + ".svg"; })
+      .attr("transform", function(d) { return "translate(" + -d.r + "," + -d.r + ")"; })
+      .attr("width", function(d) { return d.r * 2; })
+      .attr("height", function(d) { return d.r * 2; })
+      .attr("preserveAspectRatio", "xMidYMin");
+
+  /*
+  node.filter(function(d) { return !d.children && d.value > cutOff; })
+    .append("text")
+      .attr("dy", ".3em")
+      .style("text-anchor", "middle")
+      .text(function(d) { return d.className; });
+   */
+
+  var title = svg.append("g")
+      .attr("transform", "translate(" + (diameter / 3) +", " + (diameter - 30) + ")");
+  title.append("text")
+      .text(relays.length + " relays")
+      .attr("text-anchor", "middle")
+      .attr("style", "font-size: 18pt");
+  title.append("text")
+      .text(data['relays_published'])
+      .attr("text-anchor", "middle")
+      .attr("dy", "15")
+      .attr("style", "font-size: 10pt");
+
+  var legendWidth = 270;
+  var legendHeight = 115;
+  var legendIconSize = 50;
+  var legendIconMargin = (legendHeight - legendIconSize * 2) / 3;
+  var legend = svg.append("g")
+      .attr("transform", "translate(" + (diameter - legendWidth - 10) +", " + (diameter - legendHeight - 10) + ")")
+  legend.append("rect")
+      .attr("width", legendWidth)
+      .attr("height", legendHeight)
+      .attr("fill", "#cccccc")
+      .attr("stroke", "#000000");
+  var legendOnion = legend.append("g")
+      .attr("transform", "translate(0, " + legendIconMargin + ")");
+  legendOnion.append("image")
+    .attr("xlink:href", "tor-consensus-vis-node-onion.svg")
+      .attr("width", legendIconSize)
+      .attr("height", legendIconSize)
+      .attr("preserveAspectRatio", "xMidYMin");
+  legendOnion.append("text")
+      .text("relays with at least " + (cutOff * 8 / 1000) + " Mbit/s of capacity")
+      .attr("text-anchor", "start")
+      .attr("dx", legendIconSize)
+      .attr("dy", legendIconSize / 2)
+  var legendCircle = legend.append("g")
+      .attr("transform", "translate(0, " + (legendIconSize + legendIconMargin * 2) + ")");
+  legendCircle.append("image")
+    .attr("xlink:href", "tor-consensus-vis-node-circle.svg")
+      .attr("width", legendIconSize)
+      .attr("height", legendIconSize)
+      .attr("preserveAspectRatio", "xMidYMin");
+  legendCircle.append("text")
+      .text("smaller relays")
+      .attr("text-anchor", "start")
+      .attr("dx", legendIconSize)
+      .attr("dy", legendIconSize / 2)
+});
+
+d3.select(self.frameElement).style("height", diameter + "px");
+
+</script>

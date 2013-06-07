@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   width="120.50655"
+   height="184.78299"
+   viewBox="0 0 120.50655 184.78298"
+   id="图层_1"
+   xml:space="preserve"
+   inkscape:version="0.48.3.1 r9886"
+   sodipodi:docname="tor-consensus-vis-node-circle.svg"><sodipodi:namedview
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1"
+   objecttolerance="10"
+   gridtolerance="10"
+   guidetolerance="10"
+   inkscape:pageopacity="0"
+   inkscape:pageshadow="2"
+   inkscape:window-width="1278"
+   inkscape:window-height="771"
+   id="namedview24"
+   showgrid="false"
+   fit-margin-top="0"
+   fit-margin-left="0"
+   fit-margin-right="0"
+   fit-margin-bottom="0"
+   inkscape:zoom="1.6275862"
+   inkscape:cx="-46.471566"
+   inkscape:cy="24.889652"
+   inkscape:window-x="0"
+   inkscape:window-y="0"
+   inkscape:window-maximized="0"
+   inkscape:current-layer="图层_1" /><metadata
+   id="metadata2611"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title /></cc:Work></rdf:RDF></metadata><defs
+   id="defs2609" />
+<path
+   sodipodi:type="arc"
+   style="fill:#7d4698;fill-opacity:1;stroke:none"
+   id="circle"
+   sodipodi:cx="62.669491"
+   sodipodi:cy="135.63045"
+   sodipodi:rx="56.525425"
+   sodipodi:ry="56.525425"
+   d="m 119.19492,135.63045 a 56.525425,56.525425 0 1 1 -113.0508541,0 56.525425,56.525425 0 1 1 113.0508541,0 z"
+   transform="matrix(1.048913,0,0,0.95108692,-5.4815686,2.0260454)"
+   inkscape:label="#path3034" /></svg>
