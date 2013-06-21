@@ -38,12 +38,12 @@ d3.json("details.json", function(error, data) {
   data["relays"].forEach(function(relay) {
     if (0 != relay['consensus_weight'] && relay['running']) {
       relays.push({ packageName: "Relays", className: relay['nickname'], value: relay["consensus_weight"],
-                    exit: relay["exit_probability"] > 0,
+                    exit: relay["exit_probability"] > 0, bandwidth: relay["advertised_bandwidth"],
                   });
     }
   });
 
-  var cutOff = 100 / 8 * 1000; // 100 Mbit/s
+  var cutOff = 100 / 8.0 * 1000.0 * 1000.0; // 100 Mbit/s
 
   var node = svg.selectAll(".node")
       .data(bubble.nodes({ children: relays })
@@ -54,7 +54,7 @@ d3.json("details.json", function(error, data) {
 
   node.filter(function(d) { return !d.children;})
     .append("image")
-      .attr("xlink:href", function(d) { return "tor-consensus-vis-node-" + (d.value > cutOff ? "onion" : "circle") + ".svg"; })
+      .attr("xlink:href", function(d) { return "tor-consensus-vis-node-" + (d.bandwidth > cutOff ? "onion" : "circle") + ".svg"; })
       .attr("transform", function(d) { return "translate(" + -d.r + "," + -d.r + ")"; })
       .attr("width", function(d) { return d.r * 2; })
       .attr("height", function(d) { return d.r * 2; })
@@ -92,7 +92,7 @@ d3.json("details.json", function(error, data) {
       .attr("height", legendIconSize)
       .attr("preserveAspectRatio", "xMidYMin");
   legendOnion.append("text")
-      .text("relays with at least " + (cutOff * 8 / 1000) + " Mbit/s of capacity")
+      .text("relays with at least " + (cutOff * 8 / 1000 / 1000) + " Mbit/s of capacity")
       .attr("text-anchor", "start")
       .attr("dx", legendIconSize)
       .attr("dy", legendIconSize / 2)
