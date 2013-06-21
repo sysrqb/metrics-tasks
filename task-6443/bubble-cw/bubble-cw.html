@@ -25,11 +25,21 @@ var svg = d3.select("body").append("svg")
     .attr("height", diameter)
     .attr("class", "bubble");
 
+svg.append("defs")
+  .append("filter")
+    .attr("id", "middle-filter")
+    .append("feColorMatrix")
+      .attr("type", "hueRotate")
+      .attr("in", "SourceGraphic")
+      .attr("values", "90");
+
 d3.json("details.json", function(error, data) {
   var relays = [];
   data["relays"].forEach(function(relay) {
     if (0 != relay['consensus_weight'] && relay['running']) {
-      relays.push({ packageName: "Relays", className: relay['nickname'], value: relay["consensus_weight"] });
+      relays.push({ packageName: "Relays", className: relay['nickname'], value: relay["consensus_weight"],
+                    exit: relay["exit_probability"] > 0,
+                  });
     }
   });
 
@@ -48,15 +58,8 @@ d3.json("details.json", function(error, data) {
       .attr("transform", function(d) { return "translate(" + -d.r + "," + -d.r + ")"; })
       .attr("width", function(d) { return d.r * 2; })
       .attr("height", function(d) { return d.r * 2; })
-      .attr("preserveAspectRatio", "xMidYMin");
-
-  /*
-  node.filter(function(d) { return !d.children && d.value > cutOff; })
-    .append("text")
-      .attr("dy", ".3em")
-      .style("text-anchor", "middle")
-      .text(function(d) { return d.className; });
-   */
+      .attr("preserveAspectRatio", "xMidYMin")
+      .attr("filter", function(d) { return d.exit ? "" : "url(#middle-filter)"; });
 
   var title = svg.append("g")
       .attr("transform", "translate(" + (diameter / 3) +", " + (diameter - 30) + ")");
