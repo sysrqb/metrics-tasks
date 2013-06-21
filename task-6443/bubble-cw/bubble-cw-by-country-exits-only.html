@@ -11,9 +11,10 @@ text {
 <script src="d3.min.js"></script>
 
 <script>
-var graph_title = "by as";
-function get_group_id(relay) { return relay.as_number; };
-function get_group_name(relay) { return relay.as_name; };
+var graph_title = "by country";
+var exits_only = true;
+function get_group_id(relay) { return relay.country; };
+function get_group_name(relay) { return relay.country_name; };
 </script>
 
 <script src="group_bubbles.js"></script>
