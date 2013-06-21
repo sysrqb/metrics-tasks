@@ -59,7 +59,18 @@ d3.json("details.json", function(error, data) {
       .attr("width", function(d) { return d.r * 2; })
       .attr("height", function(d) { return d.r * 2; })
       .attr("preserveAspectRatio", "xMidYMin")
-      .attr("filter", function(d) { return d.exit ? "" : "url(#middle-filter)"; });
+      .attr("filter", function(d) { return d.exit ? "" : "url(#middle-filter)"; })
+    .on("mouseover", function(d) {
+         svg.append("text")
+             .attr("transform", "translate(" + diameter + "," + (diameter - legendHeight - 50) + ")")
+             .attr("id", "relay-bw")
+             .style("text-anchor", "end")
+             .style("font-size", "14pt")
+             .text(d.className.substring(0, 20) + ": " + (d.bandwidth * 8.0 / 1000.0 / 1000.0).toFixed(2) + " Mbit/s");
+       })
+    .on("mouseout", function() {
+         d3.select("#relay-bw").remove();
+       });
 
   var title = svg.append("g")
       .attr("transform", "translate(" + (diameter / 3) +", " + (diameter - 30) + ")");
