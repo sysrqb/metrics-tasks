@@ -25,6 +25,14 @@ var svg = d3.select("body").append("svg")
     .attr("height", diameter)
     .attr("class", "bubble");
 
+svg.append("defs")
+  .append("filter")
+    .attr("id", "middle-filter")
+    .append("feColorMatrix")
+      .attr("type", "hueRotate")
+      .attr("in", "SourceGraphic")
+      .attr("values", "90");
+
 d3.json("details.json", function(error, data) {
   var by_as = {};
   data.relays.forEach(function(relay) {
@@ -33,11 +41,14 @@ d3.json("details.json", function(error, data) {
         by_as[relay.as_number] = { name: relay.as_name, children: [] };
       }
       by_as[relay.as_number].children.push({ name: relay.nickname ? relay.fingerprint : relay.nickname,
-                                             value: relay.consensus_weight });
+                                             value: relay.consensus_weight,
+                                             exit: relay["exit_probability"] > 0,
+                                             bandwidth: relay["advertised_bandwidth"],
+                                           });
     }
   });
 
-  var cutOff = 100 / 8 * 1000; // 100 Mbit/s
+  var cutOff = 100 / 8.0 * 1000.0 * 1000.0; // 100 Mbit/s
   var bubbles = svg.selectAll(".node")
       .data(bubble.nodes({ children: d3.values(by_as) }));
   var node = bubbles.enter().append("g")
@@ -50,13 +61,14 @@ d3.json("details.json", function(error, data) {
       .style("fill", "#888888")
       .style("fill-opacity", ".25");
 
-  node.filter(function(d) { return !d.children;})
+  node.filter(function(d) { return !d.children && d.r > 1;})
     .append("image")
-      .attr("xlink:href", function(d) { return "tor-consensus-vis-node-" + (d.value > cutOff ? "onion" : "circle") + ".svg"; })
+      .attr("xlink:href", function(d) { return "tor-consensus-vis-node-" + (d.bandwidth > cutOff ? "onion" : "circle") + ".svg"; })
       .attr("transform", function(d) { return "translate(" + -d.r + "," + -d.r + ")"; })
       .attr("width", function(d) { return d.r * 2; })
       .attr("height", function(d) { return d.r * 2; })
-      .attr("preserveAspectRatio", "xMidYMin");
+      .attr("preserveAspectRatio", "xMidYMin")
+      .attr("filter", function(d) { return d.exit ? "" : "url(#middle-filter)"; });
 
   node.filter(function(d) { return d.children && d.name; })
     .each(function(d) {
@@ -119,7 +131,7 @@ d3.json("details.json", function(error, data) {
       .attr("height", legendIconSize)
       .attr("preserveAspectRatio", "xMidYMin");
   legendOnion.append("text")
-      .text("relays with at least " + (cutOff * 8 / 1000) + " Mbit/s of capacity")
+      .text("relays with at least " + (cutOff * 8 / 1000 / 1000) + " Mbit/s of capacity")
       .attr("text-anchor", "start")
       .attr("dx", legendIconSize)
       .attr("dy", legendIconSize / 2)
