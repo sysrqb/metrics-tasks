@@ -75,7 +75,7 @@ d3.json("details.json", function(error, data) {
   var title = svg.append("g")
       .attr("transform", "translate(" + (diameter / 3) +", " + (diameter - 30) + ")");
   title.append("text")
-      .text(relays.length + " relays")
+      .text(relays.length + " relays (" + (node.filter(function(d) { return d.r > 1; }).size()) + " visible)")
       .attr("text-anchor", "middle")
       .attr("style", "font-size: 18pt");
   title.append("text")
