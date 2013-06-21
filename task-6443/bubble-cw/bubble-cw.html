@@ -52,7 +52,7 @@ d3.json("details.json", function(error, data) {
       .attr("class", "node")
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
 
-  node.filter(function(d) { return !d.children;})
+  node.filter(function(d) { return !d.children && d.r > 1;})
     .append("image")
       .attr("xlink:href", function(d) { return "tor-consensus-vis-node-" + (d.bandwidth > cutOff ? "onion" : "circle") + ".svg"; })
       .attr("transform", function(d) { return "translate(" + -d.r + "," + -d.r + ")"; })
