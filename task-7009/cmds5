@@ -1,0 +1,65 @@
+ ./individually.py gz */* >> RESULTS5
+ ./individually.py bz2 */* >> RESULTS5
+ ./individually.py xz */* >> RESULTS5
+ ./individually.py uncompressed */* >> RESULTS5
+
+ ./pairwise.py diff_gz 1 */* >> RESULTS5
+ ./pairwise.py diff_gz 2 */* >> RESULTS5
+ ./pairwise.py diff_gz 4 */* >> RESULTS5
+ ./pairwise.py diff_gz 6 */* >> RESULTS5
+ ./pairwise.py diff_gz 8 */* >> RESULTS5
+
+ ./pairwise.py diff_bz2 1 */* >> RESULTS5
+ ./pairwise.py diff_bz2 2 */* >> RESULTS5
+ ./pairwise.py diff_bz2 4 */* >> RESULTS5
+ ./pairwise.py diff_bz2 6 */* >> RESULTS5
+ ./pairwise.py diff_bz2 8 */* >> RESULTS5
+
+ ./pairwise.py diff_u_gz 1 */* >> RESULTS5
+ ./pairwise.py diff_u_gz 2 */* >> RESULTS5
+ ./pairwise.py diff_u_gz 4 */* >> RESULTS5
+ ./pairwise.py diff_u_gz 6 */* >> RESULTS5
+ ./pairwise.py diff_u_gz 8 */* >> RESULTS5
+
+ ./pairwise.py diff_u_bz2 1 */* >> RESULTS5
+ ./pairwise.py diff_u_bz2 2 */* >> RESULTS5
+ ./pairwise.py diff_u_bz2 4 */* >> RESULTS5
+ ./pairwise.py diff_u_bz2 6 */* >> RESULTS5
+ ./pairwise.py diff_u_bz2 8 */* >> RESULTS5
+
+ ./pairwise.py diff_e_gz 1 */* >> RESULTS5
+ ./pairwise.py diff_e_gz 2 */* >> RESULTS5
+ ./pairwise.py diff_e_gz 4 */* >> RESULTS5
+ ./pairwise.py diff_e_gz 6 */* >> RESULTS5
+ ./pairwise.py diff_e_gz 8 */* >> RESULTS5
+
+ ./pairwise.py diff_e_bz2 1 */* >> RESULTS5
+ ./pairwise.py diff_e_bz2 2 */* >> RESULTS5
+ ./pairwise.py diff_e_bz2 4 */* >> RESULTS5
+ ./pairwise.py diff_e_bz2 6 */* >> RESULTS5
+ ./pairwise.py diff_e_bz2 8 */* >> RESULTS5
+
+ ./pairwise.py condiff_gz 1 */* >> RESULTS5
+ ./pairwise.py condiff_gz 2 */* >> RESULTS5
+ ./pairwise.py condiff_gz 4 */* >> RESULTS5
+ ./pairwise.py condiff_gz 6 */* >> RESULTS5
+ ./pairwise.py condiff_gz 8 */* >> RESULTS5
+
+ ./pairwise.py condiff_bz2 1 */* >> RESULTS5
+ ./pairwise.py condiff_bz2 2 */* >> RESULTS5
+ ./pairwise.py condiff_bz2 4 */* >> RESULTS5
+ ./pairwise.py condiff_bz2 6 */* >> RESULTS5
+ ./pairwise.py condiff_bz2 8 */* >> RESULTS5
+
+ ./pairwise.py condiff2_gz 1 */* >> RESULTS5
+ ./pairwise.py condiff2_gz 2 */* >> RESULTS5
+ ./pairwise.py condiff2_gz 4 */* >> RESULTS5
+ ./pairwise.py condiff2_gz 6 */* >> RESULTS5
+ ./pairwise.py condiff2_gz 8 */* >> RESULTS5
+
+ ./pairwise.py condiff2_bz2 1 */* >> RESULTS5
+ ./pairwise.py condiff2_bz2 2 */* >> RESULTS5
+ ./pairwise.py condiff2_bz2 4 */* >> RESULTS5
+ ./pairwise.py condiff2_bz2 6 */* >> RESULTS5
+ ./pairwise.py condiff2_bz2 8 */* >> RESULTS5
+
