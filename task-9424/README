@@ -1,0 +1,6 @@
+Howto: Make graphs of relay lifetime and uptime distributions
+=============================================================
+
+./parse.sh > input.csv
+R --slave -f plot.R
+
