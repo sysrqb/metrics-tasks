@@ -1,0 +1,20 @@
+Usage:
+
+  Rscript plot-users.R direct [start] [end] [country] [events] [file]
+
+or
+
+  Rscript plot-users.R bridge [start] [end] [country] [file]
+
+  start:   start date YYYY-MM-DD
+  end:     end date YYYY-MM-DD
+  country: two-letter country code, or "all"
+  events:  censorship events ("on" or "points"), or "off"
+  file:    output filename, typically .png
+
+Examples:
+
+  Rscript plot-users.R direct 2013-07-01 2013-09-30 us on ex1.png
+
+  Rscript plot-users.R bridge 2013-01-01 2013-03-31 all ex2.png
+
