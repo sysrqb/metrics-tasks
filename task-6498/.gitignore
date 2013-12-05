@@ -5,6 +5,7 @@ bin/
 in/
 parsed-consensuses
 task-6498-results.csv
+fast-exits.csv
 Rplots.pdf
 *.png
 
