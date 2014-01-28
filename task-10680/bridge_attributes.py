@@ -54,13 +54,15 @@ class Bridge(object):
     self.ei_digest = ''
     self.running = running
 
-    def set_descriptor_details(self, platform, os_version, tor_name,
-                                     tor_vers, contact):
-      self.os = platform
-      self.os_version = os_version
-      self.tor['name'] = tor_name
-      self.tor['version'] = tor_vers
-      self.contact = contact
+  def set_descriptor_details(self, platform, os_version, tor_vers,
+                             contact, ei_digest, tor_name='Tor'):
+    """Set attributes from bridge descriptor"""
+    self.os = platform
+    self.os_version = os_version
+    self.tor['name'] = tor_name
+    self.tor['version'] = tor_vers
+    self.contact = contact
+    self.ei_digest = ei_digest
 
 def unpadded_base64_to_base_16(encoded):
   """Convert an string without padding from base64 to base16
@@ -132,15 +134,21 @@ def find_os_from_platform(platform):
     return None
      
 def find_tor_from_platform(platform):
-  """Let's hope this follows the normal convention"""
+  """Let's hope this follows the normal convention. Get version and name"""
   if platform:
     parsed = parse_platform_line(platform)
-    tor = {}
-    tor['version'] = parsed['tor_vers']
-    tor['name'] = parsed['tor_name']
-    return tor
+    return parsed['tor_vers'], parsed['tor_name']
   else:
     return None
+
+def get_tor_name_from_platform(platform):
+  """Return the name of the Tor impl provided on the platform line"""
+  if platform:
+    tor = find_tor_from_platform(platform)
+    if tor:
+      _, tor_name = tor
+      return tor_name
+  return 'unspecified'
  
 def count_unique_os_types(bridges):
   """Count the distinct OS types and versions from `bridges`
@@ -424,7 +432,8 @@ if __name__ == "__main__":
   descriptor_errors = 0
   ei_errors = 0
   for bridge in bridges.values():
-    desc_path = os.path.join(fn_descriptors_path, bridge.desc_digest.lower())
+    desc_path = os.path.join(fn_descriptors_path,
+                             bridge.desc_digest.lower())
     if os.path.exists(desc_path) and os.path.isfile(desc_path):
       with open(desc_path, 'r') as fd_descriptors:
         parsed_desc = parse_file(fd_descriptors).next()
@@ -435,18 +444,25 @@ if __name__ == "__main__":
 	      operating_system = ['unspecified']
           else:
             operating_system = parsed_desc.operating_system.split()
-          bridge.os = operating_system[0]
+          operating_sys = operating_system[0]
+	  os_version = ''
           if len(operating_system) > 1:
-            bridge.os_version = ' '.join(operating_system[1:])
+            os_version = ' '.join(operating_system[1:])
           if not parsed_desc.tor_version:
-            bridge.tor = find_tor_from_platform(parsed_desc.platform)
-            if not bridge.tor:
-	      bridge.tor['version'] = 'unspecified'
-	      bridge.tor['name'] = 'unspecified'
+            tor = find_tor_from_platform(parsed_desc.platform)
+            if not tor:
+	      tor_version = 'unspecified'
+	      tor_name = 'unspecified'
+	    else:
+	      tor_version, tor_name = tor
           else:
-            bridge.tor['version'] = parsed_desc.tor_version
-          bridge.contact = parsed_desc.contact
-          bridge.ei_digest = parsed_desc.extra_info_digest
+            tor_version = parsed_desc.tor_version
+            tor_name = get_tor_name_from_platform(parsed_desc.platform)
+          contact = parsed_desc.contact
+          ei_digest = parsed_desc.extra_info_digest
+          bridge.set_descriptor_details(operating_sys, os_version,
+                                        tor_version, contact, ei_digest,
+                                        tor_name)
           if not bridge.ei_digest:
             print "Extra-info digest is None: %s" % desc_path
         else:
