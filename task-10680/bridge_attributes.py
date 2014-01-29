@@ -89,11 +89,101 @@ def unpadded_base64_to_base_16(encoded):
         raise TypeError
     return b16str
 
-def find_most_recent_ns(list_of_files):
+def parse_networkstatus(fn_ns):
+  """Parse networkstatus document
+
+  Arg:
+    fn_ns: A string providing the filename of the document
+
+  Returns:
+    A dict containing all running bridges indexed by their fingerprint
+      and the publication date of the networkstatus document.
+  """
+  bridges = {}
+  publication_date = None
+  for bridge in parse_file(fn_ns):
+    if not publication_date:
+      publication_date = bridge.document.published
+    if 'Running' in bridge.flags:
+      bridges[bridge.fingerprint] = Bridge(bridge.fingerprint,
+                                           bridge.nickname,
+                                           bridge.published,
+                                           bridge.digest)
+  return bridges, publication_date
+
+def parse_bridge_documents(bridges, fn_ns):
+  bridges, publication_date = parse_networkstatus(fn_ns)
+  print "Parsed %d routers from ns" % len(bridges)
+
+  descriptor_errors = 0
+  ei_errors = 0
+  for bridge in bridges.values():
+    desc_path = os.path.join(fn_descriptors_path,
+                             bridge.desc_digest.lower())
+    if os.path.exists(desc_path) and os.path.isfile(desc_path):
+      with open(desc_path, 'r') as fd_descriptors:
+        parsed_desc = parse_file(fd_descriptors).next()
+        if bridge.fingerprint == parsed_desc.fingerprint:
+          if not parsed_desc.operating_system:
+            operating_system = find_os_from_platform(parsed_desc.platform)
+            if not operating_system:
+	      operating_system = ['unspecified']
+          else:
+            operating_system = parsed_desc.operating_system.split()
+          operating_sys = operating_system[0]
+	  os_version = ''
+          if len(operating_system) > 1:
+            os_version = ' '.join(operating_system[1:])
+          if not parsed_desc.tor_version:
+            tor = find_tor_from_platform(parsed_desc.platform)
+            if not tor:
+	      tor_version = 'unspecified'
+	      tor_name = 'unspecified'
+	    else:
+	      tor_version, tor_name = tor
+          else:
+            tor_version = parsed_desc.tor_version
+            tor_name = get_tor_name_from_platform(parsed_desc.platform)
+          contact = parsed_desc.contact
+          ei_digest = parsed_desc.extra_info_digest
+          bridge.set_descriptor_details(operating_sys, os_version,
+                                        tor_version, contact, ei_digest,
+                                        tor_name)
+          if not bridge.ei_digest:
+            print "Extra-info digest is None: %s" % desc_path
+        else:
+          print ("Fingerprint mismatch! %s vs %s" %
+                (bridge.fingerprint, parsed_desc.fingerprint))
+          descriptor_errors += 1
+          del bridges[bridge.fingerprint]
+          break
+    else:
+      print "Descriptor does not exist for %s" % bridge.desc_digest
+      descriptor_errors += 1
+      break
+    if bridge.ei_digest:
+      ei_path = os.path.join(fn_extrainfo_path, bridge.ei_digest.lower())
+      if os.path.exists(ei_path) and os.path.isfile(ei_path):
+        with open(ei_path, 'r') as fd_extrainfo:
+          parsed_ei = parse_file(fd_extrainfo).next()
+          bridge.transports = parsed_ei.transport
+          bridge.extrainfo_published = parsed_ei.published
+	  bridge.bridge_ip_transports = parsed_ei.ip_transports
+      else:
+        print "Extra-info document does not exist for %s" % bridge.digest
+        ei_errors += 1
+  print ("%d errors during descriptor parsing, %d errors during "
+        "extra-info parsing" % (descriptor_errors, ei_errors))
+  return bridges
+
+
+def find_most_recent_ns(ns_dir):
   """Search `list_of_files` for most recent ns"""
   newest = {'name': None, 'date': datetime.datetime.fromtimestamp(0)}
+  list_of_files = os.listdir(fn_networkstatus_path)
   for filename in list_of_files:
-    with open(filename) as ns:
+    absfilename = os.path.join(fn_networkstatus_path, filename)
+    with open(absfilename) as ns:
       for line in ns:
         if line.startswith("@type"):
 	  next
@@ -101,10 +191,10 @@ def find_most_recent_ns(list_of_files):
 	  date = line[10:].strip()
 	  dt = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
           if dt > newest['date']:
-            newest['name'] = filename
+            newest['name'] = absfilename
             newest['date'] = dt
 	  break
-  return newest['name']
+  return newest
 
 def parse_platform_line(platform):
   """Let's hope this follows the normal convention"""
@@ -358,10 +448,33 @@ def format_for_pretty_print(os, os_versions, transports, transportsbyos,
 
   #pretty_print_attributes(attributes)
 
+def handle_options(argv):
+  """Handle the command line arguments"""
+  if len(argv) == 5:
+    fn_descriptors_dir = argv[1]
+    fn_extrainfo_dir = argv[2]
+    fn_networkstatus_dir = argv[3]
+    fn_output_dir = argv[4]
+  elif len(argv) == 6:
+    if argv[1] == '-a':
+      parse_all = True
+    else:
+      usage(exe)
+    fn_descriptors_dir = argv[2]
+    fn_extrainfo_dir = argv[3]
+    fn_networkstatus_dir = argv[4]
+    fn_output_dir = argv[5]
+  else:
+    usage(exe)
+  return fn_descriptors_dir, fn_extrainfo_dir, fn_networkstatus_dir, fn_output_dir
+
+
+
 def usage(exe):
   """Print the helpful description"""
   helpful = ("syntax: %s [-a] <path/to/descriptors> "
-            "<path/to/extra-info documents> <path/to/networkstatuses>"
+            "<path/to/extra-info documents> <path/to/networkstatuses> "
+            "<path/to/outputdir>"
             "\n\n"
             "  -a      Parse all files, the entire available history."
             "\n            only parses the most recent, by default."
@@ -376,24 +489,15 @@ if __name__ == "__main__":
   current_dir = os.getcwd()
   exe = sys.argv[0]
 
-  if len(sys.argv) == 4:
-    fn_descriptors_dir = sys.argv[1]
-    fn_extrainfo_dir = sys.argv[2]
-    fn_networkstatus_dir = sys.argv[3]
-  elif len(sys.argv) == 5:
-    if sys.argv[1] == '-a':
-      parse_all = True
-    else:
-      usage(exe)
-    fn_descriptors_dir = sys.argv[2]
-    fn_extrainfo_dir = sys.argv[3]
-    fn_networkstatus_dir = sys.argv[4]
-  else:
-    usage(exe)
+  (fn_descriptors_dir,
+  fn_extrainfo_dir,
+  fn_networkstatus_dir,
+  fn_output_dir) = handle_options(sys.argv)
 
   fn_descriptors_path = os.path.abspath(fn_descriptors_dir)
   fn_extrainfo_path = os.path.abspath(fn_extrainfo_dir)
   fn_networkstatus_path = os.path.abspath(fn_networkstatus_dir)
+  fn_output_path = os.path.abspath(fn_output_dir)
 
   if not (os.path.exists(fn_descriptors_path) and
           os.path.isdir(fn_descriptors_path)):
@@ -406,90 +510,21 @@ if __name__ == "__main__":
            "documents" % fn_extrainfo_path)
     usage(exe)
   if not (os.path.exists(fn_networkstatus_path) and
-          os.path.isdir(fn_extrainfo_path)):
+          os.path.isdir(fn_networkstatus_path)):
     print ("%s is not a path to the directory of networkstatus files "
            % fn_networkstatus_path)
     usage(exe)
 
   bridges = {}
-  os.chdir(fn_networkstatus_path)
+  os.chdir(fn_output_path)
   publication_date = None
   if parse_all:
     all_bridges = parse_all_ns(fn_networkstatus_path)
   else:
-    fn_ns = find_most_recent_ns(os.listdir(os.getcwd()))
-    for bridge in parse_file(fn_ns):
-      if not publication_date:
-        publication_date = bridge.document.published
-      if 'Running' in bridge.flags:
-        bridges[bridge.fingerprint] = Bridge(bridge.fingerprint,
-                                             bridge.nickname,
-                                             bridge.published,
-                                             bridge.digest)
-    print "Parsed %d routers from ns" % len(bridges)
+    fn_ns = find_most_recent_ns(fn_networkstatus_path)
+    bridges = parse_bridge_documents(bridges, fn_ns['name'])
+    publication_date = fn_ns['date']
 
-  os.chdir(fn_descriptors_path)
-  descriptor_errors = 0
-  ei_errors = 0
-  for bridge in bridges.values():
-    desc_path = os.path.join(fn_descriptors_path,
-                             bridge.desc_digest.lower())
-    if os.path.exists(desc_path) and os.path.isfile(desc_path):
-      with open(desc_path, 'r') as fd_descriptors:
-        parsed_desc = parse_file(fd_descriptors).next()
-        if bridge.fingerprint == parsed_desc.fingerprint:
-          if not parsed_desc.operating_system:
-            operating_system = find_os_from_platform(parsed_desc.platform)
-            if not operating_system:
-	      operating_system = ['unspecified']
-          else:
-            operating_system = parsed_desc.operating_system.split()
-          operating_sys = operating_system[0]
-	  os_version = ''
-          if len(operating_system) > 1:
-            os_version = ' '.join(operating_system[1:])
-          if not parsed_desc.tor_version:
-            tor = find_tor_from_platform(parsed_desc.platform)
-            if not tor:
-	      tor_version = 'unspecified'
-	      tor_name = 'unspecified'
-	    else:
-	      tor_version, tor_name = tor
-          else:
-            tor_version = parsed_desc.tor_version
-            tor_name = get_tor_name_from_platform(parsed_desc.platform)
-          contact = parsed_desc.contact
-          ei_digest = parsed_desc.extra_info_digest
-          bridge.set_descriptor_details(operating_sys, os_version,
-                                        tor_version, contact, ei_digest,
-                                        tor_name)
-          if not bridge.ei_digest:
-            print "Extra-info digest is None: %s" % desc_path
-        else:
-          print ("Fingerprint mismatch! %s vs %s" %
-                (bridge.fingerprint, parsed_desc.fingerprint))
-          descriptor_errors += 1
-          del bridges[bridge.fingerprint]
-          break
-    else:
-      print "Descriptor does not exist for %s" % bridge.desc_digest
-      descriptor_errors += 1
-      break
-    if bridge.ei_digest:
-      ei_path = os.path.join(fn_extrainfo_path, bridge.ei_digest.lower())
-      if os.path.exists(ei_path) and os.path.isfile(ei_path):
-        with open(ei_path, 'r') as fd_extrainfo:
-          parsed_ei = parse_file(fd_extrainfo).next()
-          bridge.transports = parsed_ei.transport
-          bridge.extrainfo_published = parsed_ei.published
-	  bridge.bridge_ip_transports = parsed_ei.ip_transports
-      else:
-        print "Extra-info document does not exist for %s" % bridge.digest
-        ei_errors += 1
-
-
-  print ("%d errors during descriptor parsing, %d errors during "
-        "extra-info parsing" % (descriptor_errors, ei_errors))
     
   print "%d bridges in total" % len(bridges)
   os_platforms, os_versions = count_unique_os_types(bridges)
@@ -502,5 +537,4 @@ if __name__ == "__main__":
   #                        confed_extor, unconfed_extor, neither,
   #                        contacts, versions)
 
-  os.chdir(current_dir)
   format_for_csv(publication_date, os_platforms, versions, csv_filename)
