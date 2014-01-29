@@ -251,24 +251,41 @@ def count_unique_os_types(bridges):
     os_version: A dict mapping OS version to the number of occurrences
   """
 
-  os_types = {}
-  os_versions = {}
+  opsys = {}
+  opsys['os_types'] = {}
+  opsys['os_versions'] = {}
+  opsys['ec2_os_types'] = {}
+  opsys['ec2_os_versions'] = {}
   for bridge in bridges.values():
     os = bridge.os
-    if os in os_types:
-      os_types[os] += 1
+    if os in opsys['os_types']:
+      opsys['os_types'][os] += 1
     else:
-      os_types[os] = 1
+      opsys['os_types'][os] = 1
     version = bridge.os_version
-    if os in os_versions:
-      if version in os_versions[os]:
-        os_versions[os][version] += 1
+    if os in opsys['os_versions']:
+      if version in opsys['os_versions'][os]:
+        opsys['os_versions'][os][version] += 1
       else:
-        os_versions[os][version] = 1
+        opsys['os_versions'][os][version] = 1
     else:
-      os_versions[os] = {}
-      os_versions[os][version] = 1
-  return os_types, os_versions
+      opsys['os_versions'][os] = {}
+      opsys['os_versions'][os][version] = 1
+
+    if bridge.nickname.startswith('ec2bridger'):
+      if os in opsys['ec2_os_types']:
+        opsys['ec2_os_types'][os] += 1
+      else:
+        opsys['ec2_os_types'][os] = 1
+      if os in opsys['ec2_os_versions']:
+        if version in opsys['ec2_os_versions'][os]:
+          opsys['ec2_os_versions'][os][version] += 1
+        else:
+          opsys['ec2_os_versions'][os][version] = 1
+      else:
+        opsys['ec2_os_versions'][os] = {}
+        opsys['ec2_os_versions'][os][version] = 1
+  return opsys
 
 def count_transports(bridges):
   """Count the pluggable transports from `bridges`
@@ -358,13 +375,19 @@ def count_by_tor_versions(bridges):
   """
 
   versions = {}
+  ec2versions = {}
   for bridge in bridges.values():
     index = "%s-%s" % (bridge.tor['version'],bridge.tor['name'])
     if index in versions:
       versions[index] += 1
     else:
       versions[index] = 1
-  return versions
+    if bridge.nickname.startswith('ec2bridger'):
+      if index in ec2versions:
+        ec2versions[index] += 1
+      else:
+        ec2versions[index] = 1
+  return versions, ec2versions
 
 def pretty_print_attributes(attributes):
   """Pretty print the attributes from `heading`"""
@@ -393,15 +416,16 @@ def write_to_csv(header, values, filename):
     attribwriter.writerow(row)
   csvfile.close()
 
-def format_for_csv(date, platforms, versions, filename):
+def format_for_csv(date, opsys, ec2opsys, versions, ec2versions, filename):
   """Format the args into a dict that can be passwd to write_to_csv"""
 
   #fields = "date,flag,country,version,platform,ec2bridge,relays,bridges"
   fields = ['date', 'flag', 'country', 'version', 'platform', 'ec2bridge', 'relays', 'bridges']
   list_of_values = []
 
-  print "Platforms: %s" % platforms
+  print "Platforms: %s" % opsys
   values = {}
+  ec2values = {}
   for vers in versions:
     if vers[:5] in values:
       print "Adding %s to version %s" % (str(versions[vers]), vers[:5])
@@ -409,14 +433,29 @@ def format_for_csv(date, platforms, versions, filename):
     else:
       print "Adding %s to version %s" % (str(versions[vers]), vers[:5])
       values[vers[:5]] = {'field': 'version', 'value': versions[vers]}
-  print "%r" % values
-  for platform in platforms:
-    if platform in values:
-      print "Adding %s to platform %s" % (str(platforms[platform]), platform)
-      values[platform]['value'] += platforms[platform]
+  for vers in ec2versions:
+    if vers[:5] in ec2values:
+      print "Adding %s to version %s" % (str(ec2versions[vers]), vers[:5])
+      ec2values[vers[:5]]['value'] += ec2versions[vers]
     else:
-      print "Adding %s to platform %s" % (str(platforms[platform]), platform)
-      values[platform] = {'field': 'platform', 'value': platforms[platform]}
+      print "Adding %s to version %s" % (str(ec2versions[vers]), vers[:5])
+      ec2values[vers[:5]] = {'field': 'version', 'value': ec2versions[vers]}
+  print "%r" % values
+  for platform in opsys:
+    if platform in values:
+      print "Adding %s to platform %s" % (str(opsys[platform]), platform)
+      values[platform]['value'] += opsys[platform]
+    else:
+      print "Adding %s to platform %s" % (str(opsys[platform]), platform)
+      values[platform] = {'field': 'platform', 'value': opsys[platform]}
+  for platform in ec2opsys:
+    if platform in ec2values:
+      print "Adding %s to ec2 platform %s" % (str(ec2opsys[platform]), platform)
+      ec2values[platform]['value'] += ec2opsys[platform]
+    else:
+      print "Adding %s to ec2 platform %s" % (str(ec2opsys[platform]), platform)
+      ec2values[platform] = {'field': 'platform', 'value': ec2opsys[platform]}
+
   print "%r" % values
 
   for value in values:
@@ -426,7 +465,20 @@ def format_for_csv(date, platforms, versions, filename):
     csv_values['date'] = date.strftime("%Y-%m-%d")
     csv_values[values[value]['field']] = value
     csv_values['bridges'] = values[value]['value']
+    if value in ec2values:
+      csv_values['ec2bridge'] = ec2values[value]['value']
     list_of_values.append(csv_values)
+  # Grab everything else we missed
+  for value in ec2values:
+    csv_values = {}
+    if value not in values:
+      for field in fields:
+        csv_values[field] = ''
+      csv_values['date'] = date.strftime("%Y-%m-%d")
+      csv_values[ec2values[value]['field']] = value
+      csv_values['bridges'] = ec2values[value]['value']
+      list_of_values.append(csv_values)
+
 
   print "%r" % list_of_values
   write_to_csv(fields, list_of_values, filename)
@@ -527,14 +579,14 @@ if __name__ == "__main__":
 
     
   print "%d bridges in total" % len(bridges)
-  os_platforms, os_versions = count_unique_os_types(bridges)
+  opsys = count_unique_os_types(bridges)
   transports, by_os = count_transports(bridges)
   confed_extor, unconfed_extor, neither = count_extorports(bridges)
   contacts = count_contact_set(bridges)
-  versions = count_by_tor_versions(bridges)
+  versions, ec2versions = count_by_tor_versions(bridges)
 
   #format_for_pretty_print(os_platforms, os_versions, transports, by_os,
   #                        confed_extor, unconfed_extor, neither,
   #                        contacts, versions)
 
-  format_for_csv(publication_date, os_platforms, versions, csv_filename)
+  format_for_csv(publication_date, opsys['os_types'], opsys['ec2_os_types'], versions, ec2versions, csv_filename)
