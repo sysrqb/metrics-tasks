@@ -37,7 +37,8 @@ class Bridge(object):
   """
 
 
-  def __init__(self, fingerprint, nickname, published, digest, running=True):
+  def __init__(self, fingerprint, nickname,
+                     published, digest, running=True):
     """Assign values from a descriptor, define the rest for later"""
     self.fingerprint = fingerprint
     self.os = ''
@@ -114,7 +115,8 @@ def parse_networkstatus(fn_ns):
 
 def parse_bridge_documents(bridges, fn_ns):
   bridges, publication_date = parse_networkstatus(fn_ns)
-  print "Parsed %d routers from ns - %r" % (len(bridges), publication_date.isoformat(' '))
+  print ("Parsed %d routers from ns - %r" %
+        (len(bridges), publication_date.isoformat(' ')))
 
   descriptor_errors = 0
   ei_errors = 0
@@ -128,20 +130,20 @@ def parse_bridge_documents(bridges, fn_ns):
           if not parsed_desc.operating_system:
             operating_system = find_os_from_platform(parsed_desc.platform)
             if not operating_system:
-	      operating_system = ['unspecified']
+              operating_system = ['unspecified']
           else:
             operating_system = parsed_desc.operating_system.split()
           operating_sys = operating_system[0]
-	  os_version = ''
+          os_version = ''
           if len(operating_system) > 1:
             os_version = ' '.join(operating_system[1:])
           if not parsed_desc.tor_version:
             tor = find_tor_from_platform(parsed_desc.platform)
             if not tor:
-	      tor_version = 'unspecified'
-	      tor_name = 'unspecified'
-	    else:
-	      tor_version, tor_name = tor
+              tor_version = 'unspecified'
+              tor_name = 'unspecified'
+            else:
+              tor_version, tor_name = tor
           else:
             tor_version = parsed_desc.tor_version
             tor_name = get_tor_name_from_platform(parsed_desc.platform)
@@ -169,10 +171,10 @@ def parse_bridge_documents(bridges, fn_ns):
           parsed_ei = parse_file(fd_extrainfo).next()
           bridge.transports = parsed_ei.transport
           bridge.extrainfo_published = parsed_ei.published
-	  bridge.bridge_ip_transports = parsed_ei.ip_transports
+          bridge.bridge_ip_transports = parsed_ei.ip_transports
       else:
-        print ("Extra-info document does not exist for %s, specified in "
-	      "%s" % (bridge.fingerprint, bridge.desc_digest))
+        print ("Extra-info document does not exist for %s, specified "
+               "in %s" % (bridge.fingerprint, bridge.desc_digest))
         ei_errors += 1
   print ("%d errors during descriptor parsing, %d errors during "
         "extra-info parsing" % (descriptor_errors, ei_errors))
@@ -358,9 +360,10 @@ def count_extorports(bridges):
 
   Returns:
     confed_extor: An int count of how many ExtOR ports are configured
-    unconfed_extor: An int count of how many ExtOR ports are unconfigured
-                    or misconfigured
-    neither: An int count of how many bridges do not support the ExtOR port
+    unconfed_extor: An int count of how many ExtOR ports are
+                    unconfigured or misconfigured
+    neither: An int count of how many bridges do not support the
+             ExtOR port
   """
 
   confed_extor = unconfed_extor = neither = 0
@@ -442,47 +445,39 @@ def write_to_csv(header, values, filename):
     attribwriter.writerow(row)
   csvfile.close()
 
-def format_for_csv(date, opsys, ec2opsys, versions, ec2versions, filename):
+def format_for_csv(date, opsys, ec2opsys, versions,
+                   ec2versions, filename):
   """Format the args into a dict that can be passwd to write_to_csv"""
 
-  #fields = "date,flag,country,version,platform,ec2bridge,relays,bridges"
-  fields = ['date', 'flag', 'country', 'version', 'platform', 'ec2bridge', 'relays', 'bridges']
+  fields = ['date', 'flag', 'country', 'version', 'platform',
+            'ec2bridge', 'relays', 'bridges']
   list_of_values = []
 
-  #print "Platforms: %s" % opsys
   values = {}
   ec2values = {}
   for vers in versions:
     if vers[:5] in values:
-      #print "Adding %s to version %s" % (str(versions[vers]), vers[:5])
       values[vers[:5]]['value'] += versions[vers]
     else:
-      #print "Adding %s to version %s" % (str(versions[vers]), vers[:5])
       values[vers[:5]] = {'field': 'version', 'value': versions[vers]}
   for vers in ec2versions:
     if vers[:5] in ec2values:
-      #print "Adding %s to version %s" % (str(ec2versions[vers]), vers[:5])
       ec2values[vers[:5]]['value'] += ec2versions[vers]
     else:
-      #print "Adding %s to version %s" % (str(ec2versions[vers]), vers[:5])
-      ec2values[vers[:5]] = {'field': 'version', 'value': ec2versions[vers]}
-  #print "%r" % values
+      ec2values[vers[:5]] = {'field': 'version',
+                             'value': ec2versions[vers]}
   for platform in opsys:
     if platform in values:
-      #print "Adding %s to platform %s" % (str(opsys[platform]), platform)
       values[platform]['value'] += opsys[platform]
     else:
-      #print "Adding %s to platform %s" % (str(opsys[platform]), platform)
-      values[platform] = {'field': 'platform', 'value': opsys[platform]}
+      values[platform] = {'field': 'platform',
+                          'value': opsys[platform]}
   for platform in ec2opsys:
     if platform in ec2values:
-      #print "Adding %s to ec2 platform %s" % (str(ec2opsys[platform]), platform)
       ec2values[platform]['value'] += ec2opsys[platform]
     else:
-      #print "Adding %s to ec2 platform %s" % (str(ec2opsys[platform]), platform)
-      ec2values[platform] = {'field': 'platform', 'value': ec2opsys[platform]}
-
-  #print "%r" % values
+      ec2values[platform] = {'field': 'platform',
+                             'value': ec2opsys[platform]}
 
   for value in values:
     csv_values = {}
@@ -505,7 +500,6 @@ def format_for_csv(date, opsys, ec2opsys, versions, ec2versions, filename):
       csv_values['bridges'] = ec2values[value]['value']
       list_of_values.append(csv_values)
 
-  #print "%r" % list_of_values
   write_to_csv(fields, list_of_values, filename)
 
 def get_metrics_csv(bridges, publication_date, csv_filename):
@@ -516,7 +510,9 @@ def get_metrics_csv(bridges, publication_date, csv_filename):
   contacts = count_contact_set(bridges)
   versions, ec2versions = count_by_tor_versions(bridges)
 
-  format_for_csv(publication_date, opsys['os_types'], opsys['ec2_os_types'], versions, ec2versions, csv_filename)
+  format_for_csv(publication_date, opsys['os_types'],
+                 opsys['ec2_os_types'], versions, ec2versions,
+                 csv_filename)
 
 def format_for_pretty_print(os, os_versions, transports, transportsbyos,
                             confed_extor, unconfed_extor, unavail_extor,
@@ -538,16 +534,29 @@ def format_for_pretty_print(os, os_versions, transports, transportsbyos,
 def handle_options(argv):
   """Handle the command line arguments"""
   parser = argparse.ArgumentParser(description="Obtain bridge metrics")
-  parser.add_argument('-d', '--desc', help='The directory that contains bridge descriptors')
-  parser.add_argument('-e', '--ei', help='The directory that contains bridge extra-info documents')
-  parser.add_argument('-n', '--ns', help='The directory that contains bridge networkstatus documents')
-  parser.add_argument('-s', '--nsfile', help='The file path to a specific bridge networkstatus document')
-  parser.add_argument('-o', '--output', help='The directory where the output is saved')
-  parser.add_argument('-O', '--output-name', help='The filename where the output is saved')
-  parser.add_argument('-a', '--parse-all', help='Parse all documents, not only the most recent', action='store_true')
+  parser.add_argument('-d', '--desc',
+                      help='The directory that contains bridge '
+                           'descriptors')
+  parser.add_argument('-e', '--ei',
+                      help='The directory that contains bridge '
+                           'extra-info documents')
+  parser.add_argument('-n', '--ns',
+                      help='The directory that contains bridge '
+                           'networkstatus documents')
+  parser.add_argument('-s', '--nsfile',
+                      help='The file path to a specific bridge '
+                           'networkstatus document')
+  parser.add_argument('-o', '--output',
+                      help='The directory where the output is saved '
+                           '(default: cwd)')
+  parser.add_argument('-O', '--output-name',
+                      help='The filename where the output is saved '
+                           '(default: bridges.csv)')
+  parser.add_argument('-a', '--parse-all',
+                      help='Parse all documents, not only the most '
+                           'recent', action='store_true')
 
-  args = parser.parse_args()
-  return args.desc, args.ei, args.ns, args.nsfile, args.output, args.output_name, args.parse_all, parser.print_help
+  return parser
 
 if __name__ == "__main__":
   csv_filename = 'bridges.csv'
@@ -557,14 +566,16 @@ if __name__ == "__main__":
   fn_extrainfo_path = None
   fn_networkstatus_path = None
 
-  (fn_descriptors_dir,
-  fn_extrainfo_dir,
-  fn_networkstatus_dir,
-  fn_networkstatus_file,
-  fn_output_dir,
-  fn_output_file,
-  parse_all,
-  usage) = handle_options(sys.argv)
+  argparser = handle_options(sys.argv)
+  cmdargs = argparser.parse_args()
+  usage = argparser.print_help
+  fn_descriptors_dir = cmdargs.desc
+  fn_extrainfo_dir = cmdargs.ei
+  fn_networkstatus_dir = cmdargs.ns
+  fn_networkstatus_file = cmdargs.nsfile
+  fn_output_dir = cmdargs.output
+  fn_output_file = cmdargs.output_name
+  parse_all = cmdargs.parse_all
 
   if fn_descriptors_dir:
     fn_descriptors_path = os.path.abspath(fn_descriptors_dir)
@@ -625,7 +636,8 @@ if __name__ == "__main__":
     with open(fn_networkstatus_file, 'r') as fd_ns:
       fn_ns['date'] = find_publication_date_of_ns(fd_ns)
     if not fn_ns['date']:
-      print "Error: Networkstatus document does not contain a publication date!"
+      print ("Error: Networkstatus document does not contain a "
+             "publication date!")
       sys.exit()
     all_ns.append(fn_ns)
   else: 
