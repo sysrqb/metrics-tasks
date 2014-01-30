@@ -114,7 +114,7 @@ def parse_networkstatus(fn_ns):
 
 def parse_bridge_documents(bridges, fn_ns):
   bridges, publication_date = parse_networkstatus(fn_ns)
-  print "Parsed %d routers from ns" % len(bridges)
+  print "Parsed %d routers from ns - %r" % (len(bridges), publication_date.isoformat(' '))
 
   descriptor_errors = 0
   ei_errors = 0
@@ -171,7 +171,8 @@ def parse_bridge_documents(bridges, fn_ns):
           bridge.extrainfo_published = parsed_ei.published
 	  bridge.bridge_ip_transports = parsed_ei.ip_transports
       else:
-        print "Extra-info document does not exist for %s" % bridge.digest
+        print ("Extra-info document does not exist for %s, specified in "
+	      "%s" % (bridge.fingerprint, bridge.desc_digest))
         ei_errors += 1
   print ("%d errors during descriptor parsing, %d errors during "
         "extra-info parsing" % (descriptor_errors, ei_errors))
@@ -191,9 +192,9 @@ def find_publication_date_of_ns(fd_ns):
 def find_most_recent_ns(ns_dir):
   """Search `list_of_files` for most recent ns"""
   newest = {'name': None, 'date': datetime.datetime.fromtimestamp(0)}
-  list_of_files = os.listdir(fn_networkstatus_path)
+  list_of_files = os.listdir(ns_dir)
   for filename in list_of_files:
-    absfilename = os.path.join(fn_networkstatus_path, filename)
+    absfilename = os.path.join(ns_dir, filename)
     with open(absfilename) as ns:
       for line in ns:
         dt = find_publication_date_of_ns(ns)
@@ -203,6 +204,23 @@ def find_most_recent_ns(ns_dir):
             newest['date'] = dt
           break
   return newest
+
+def parse_all_ns(ns_dir):
+  """Return a list of dicts, containing filepath and pub date of ns"""
+  nsinfo = {'name': None, 'date': None}
+  all_ns = []
+  list_of_files = os.listdir(ns_dir)
+  for filename in list_of_files:
+    absfilename = os.path.join(ns_dir, filename)
+    with open(absfilename) as ns:
+      for line in ns:
+        dt = find_publication_date_of_ns(ns)
+        nsinfo['name'] = absfilename
+        nsinfo['date'] = dt
+        all_ns.append(nsinfo)
+        nsinfo = {'name': None, 'date': None}
+        break
+  return all_ns
 
 def parse_platform_line(platform):
   """Let's hope this follows the normal convention"""
@@ -415,7 +433,7 @@ def write_to_csv(header, values, filename):
 
   #with open(filename, 'wb') as csvfile:
   csvfile = open(filename, 'ab')
-  print "writing csv to file. %d rows" % len(values)
+  #print "writing csv to file. %d rows" % len(values)
   #csvfile.write("This is a test - %s" % str(len(values)))
   attribwriter = csv.DictWriter(csvfile, header)
   attribwriter.writeheader()
@@ -431,40 +449,40 @@ def format_for_csv(date, opsys, ec2opsys, versions, ec2versions, filename):
   fields = ['date', 'flag', 'country', 'version', 'platform', 'ec2bridge', 'relays', 'bridges']
   list_of_values = []
 
-  print "Platforms: %s" % opsys
+  #print "Platforms: %s" % opsys
   values = {}
   ec2values = {}
   for vers in versions:
     if vers[:5] in values:
-      print "Adding %s to version %s" % (str(versions[vers]), vers[:5])
+      #print "Adding %s to version %s" % (str(versions[vers]), vers[:5])
       values[vers[:5]]['value'] += versions[vers]
     else:
-      print "Adding %s to version %s" % (str(versions[vers]), vers[:5])
+      #print "Adding %s to version %s" % (str(versions[vers]), vers[:5])
       values[vers[:5]] = {'field': 'version', 'value': versions[vers]}
   for vers in ec2versions:
     if vers[:5] in ec2values:
-      print "Adding %s to version %s" % (str(ec2versions[vers]), vers[:5])
+      #print "Adding %s to version %s" % (str(ec2versions[vers]), vers[:5])
       ec2values[vers[:5]]['value'] += ec2versions[vers]
     else:
-      print "Adding %s to version %s" % (str(ec2versions[vers]), vers[:5])
+      #print "Adding %s to version %s" % (str(ec2versions[vers]), vers[:5])
       ec2values[vers[:5]] = {'field': 'version', 'value': ec2versions[vers]}
-  print "%r" % values
+  #print "%r" % values
   for platform in opsys:
     if platform in values:
-      print "Adding %s to platform %s" % (str(opsys[platform]), platform)
+      #print "Adding %s to platform %s" % (str(opsys[platform]), platform)
       values[platform]['value'] += opsys[platform]
     else:
-      print "Adding %s to platform %s" % (str(opsys[platform]), platform)
+      #print "Adding %s to platform %s" % (str(opsys[platform]), platform)
       values[platform] = {'field': 'platform', 'value': opsys[platform]}
   for platform in ec2opsys:
     if platform in ec2values:
-      print "Adding %s to ec2 platform %s" % (str(ec2opsys[platform]), platform)
+      #print "Adding %s to ec2 platform %s" % (str(ec2opsys[platform]), platform)
       ec2values[platform]['value'] += ec2opsys[platform]
     else:
-      print "Adding %s to ec2 platform %s" % (str(ec2opsys[platform]), platform)
+      #print "Adding %s to ec2 platform %s" % (str(ec2opsys[platform]), platform)
       ec2values[platform] = {'field': 'platform', 'value': ec2opsys[platform]}
 
-  print "%r" % values
+  #print "%r" % values
 
   for value in values:
     csv_values = {}
@@ -487,9 +505,18 @@ def format_for_csv(date, opsys, ec2opsys, versions, ec2versions, filename):
       csv_values['bridges'] = ec2values[value]['value']
       list_of_values.append(csv_values)
 
-
-  print "%r" % list_of_values
+  #print "%r" % list_of_values
   write_to_csv(fields, list_of_values, filename)
+
+def get_metrics_csv(bridges, publication_date, csv_filename):
+  """Get values and output csv file"""
+  opsys = count_unique_os_types(bridges)
+  transports, by_os = count_transports(bridges)
+  confed_extor, unconfed_extor, neither = count_extorports(bridges)
+  contacts = count_contact_set(bridges)
+  versions, ec2versions = count_by_tor_versions(bridges)
+
+  format_for_csv(publication_date, opsys['os_types'], opsys['ec2_os_types'], versions, ec2versions, csv_filename)
 
 def format_for_pretty_print(os, os_versions, transports, transportsbyos,
                             confed_extor, unconfed_extor, unavail_extor,
@@ -516,24 +543,26 @@ def handle_options(argv):
   parser.add_argument('-n', '--ns', help='The directory that contains bridge networkstatus documents')
   parser.add_argument('-s', '--nsfile', help='The file path to a specific bridge networkstatus document')
   parser.add_argument('-o', '--output', help='The directory where the output is saved')
-  parser.add_argument('-a', '--parse_all', help='Parse all documents, not only the most recent')
+  parser.add_argument('-a', '--parse_all', help='Parse all documents, not only the most recent', action='store_true')
 
   args = parser.parse_args()
-  return args.desc, args.ei, args.ns, args.nsfile, args.output, parser.print_help
+  return args.desc, args.ei, args.ns, args.nsfile, args.output, args.parse_all, parser.print_help
 
 if __name__ == "__main__":
   csv_filename = 'bridges.csv'
-  parse_all = False
   current_dir = os.getcwd()
   exe = sys.argv[0]
+  fn_descriptors_path = None
+  fn_extrainfo_path = None
+  fn_networkstatus_path = None
 
   (fn_descriptors_dir,
   fn_extrainfo_dir,
   fn_networkstatus_dir,
   fn_networkstatus_file,
   fn_output_dir,
+  parse_all,
   usage) = handle_options(sys.argv)
-
 
   if fn_descriptors_dir:
     fn_descriptors_path = os.path.abspath(fn_descriptors_dir)
@@ -582,31 +611,24 @@ if __name__ == "__main__":
   bridges = {}
   os.chdir(fn_output_path)
   publication_date = None
+  all_ns = []
   if parse_all:
-    all_bridges = parse_all_ns(fn_networkstatus_path)
-  else:
-    if fn_networkstatus_file:
-      fn_ns = {'name': fn_networkstatus_file, 'date': None}
-      with open(fn_networkstatus_file, 'r') as fd_ns:
-        fn_ns['date'] = find_publication_date_of_ns(fd_ns)
-      if not fn_ns['date']:
-        print "Error: Networkstatus document does not contain a publication date!"
-        sys.exit()
-    else: 
-      fn_ns = find_most_recent_ns(fn_networkstatus_path)
+    print "Parsing all networkstatus documents"
+    all_ns = parse_all_ns(fn_networkstatus_path)
+  elif fn_networkstatus_file:
+    fn_ns = {'name': fn_networkstatus_file, 'date': None}
+    with open(fn_networkstatus_file, 'r') as fd_ns:
+      fn_ns['date'] = find_publication_date_of_ns(fd_ns)
+    if not fn_ns['date']:
+      print "Error: Networkstatus document does not contain a publication date!"
+      sys.exit()
+    all_ns.append(fn_ns)
+  else: 
+    fn_ns = find_most_recent_ns(fn_networkstatus_path)
+    all_ns.append(fn_ns)
+
+  for fn_ns in all_ns:
     bridges = parse_bridge_documents(bridges, fn_ns['name'])
     publication_date = fn_ns['date']
 
-    
-  print "%d bridges in total" % len(bridges)
-  opsys = count_unique_os_types(bridges)
-  transports, by_os = count_transports(bridges)
-  confed_extor, unconfed_extor, neither = count_extorports(bridges)
-  contacts = count_contact_set(bridges)
-  versions, ec2versions = count_by_tor_versions(bridges)
-
-  #format_for_pretty_print(os_platforms, os_versions, transports, by_os,
-  #                        confed_extor, unconfed_extor, neither,
-  #                        contacts, versions)
-
-  format_for_csv(publication_date, opsys['os_types'], opsys['ec2_os_types'], versions, ec2versions, csv_filename)
+    get_metrics_csv(bridges, publication_date, csv_filename)
