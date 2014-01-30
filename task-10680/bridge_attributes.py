@@ -5,6 +5,7 @@ import datetime
 import os
 import pprint
 import csv
+import argparse
 from stem.descriptor import parse_file
 
 class Bridge(object):
@@ -502,23 +503,17 @@ def format_for_pretty_print(os, os_versions, transports, transportsbyos,
 
 def handle_options(argv):
   """Handle the command line arguments"""
-  if len(argv) == 5:
-    fn_descriptors_dir = argv[1]
-    fn_extrainfo_dir = argv[2]
-    fn_networkstatus_dir = argv[3]
-    fn_output_dir = argv[4]
-  elif len(argv) == 6:
-    if argv[1] == '-a':
-      parse_all = True
-    else:
-      usage(exe)
-    fn_descriptors_dir = argv[2]
-    fn_extrainfo_dir = argv[3]
-    fn_networkstatus_dir = argv[4]
-    fn_output_dir = argv[5]
-  else:
-    usage(exe)
-  return fn_descriptors_dir, fn_extrainfo_dir, fn_networkstatus_dir, fn_output_dir
+  parser = argparse.ArgumentParser(description="Obtain bridge metrics")
+  parser.add_argument('-d', '--desc', help='The directory that contains bridge descriptors')
+  parser.add_argument('-e', '--ei', help='The directory that contains bridge extra-info documents')
+  parser.add_argument('-n', '--ns', help='The directory that contains bridge networkstatus documents')
+  parser.add_argument('-o', '--output', help='The directory where the output is saved')
+  parser.add_argument('-a', '--parse_all', help='Parse all documents, not only the most recent')
+
+  args = parser.parse_args()
+  print "%r" % args
+  return args.desc, args.ei, args.ns, args.output
+  #fn_descriptors_dir, fn_extrainfo_dir, fn_networkstatus_dir, fn_output_dir
 
 
 
