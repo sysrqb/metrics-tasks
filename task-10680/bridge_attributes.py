@@ -177,6 +177,16 @@ def parse_bridge_documents(bridges, fn_ns):
         "extra-info parsing" % (descriptor_errors, ei_errors))
   return bridges
 
+def find_publication_date_of_ns(fd_ns):
+  """Return the publication date (as a datetime) or None"""
+  for line in fd_ns:
+    if line.startswith("@type"):
+      next
+    if line.startswith("published "):
+      date = line[10:].strip()
+      return datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+  return None
+
 
 def find_most_recent_ns(ns_dir):
   """Search `list_of_files` for most recent ns"""
@@ -186,15 +196,12 @@ def find_most_recent_ns(ns_dir):
     absfilename = os.path.join(fn_networkstatus_path, filename)
     with open(absfilename) as ns:
       for line in ns:
-        if line.startswith("@type"):
-	  next
-	if line.startswith("published "):
-	  date = line[10:].strip()
-	  dt = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        dt = find_publication_date_of_ns(ns)
+        if dt:
           if dt > newest['date']:
             newest['name'] = absfilename
             newest['date'] = dt
-	  break
+          break
   return newest
 
 def parse_platform_line(platform):
@@ -507,29 +514,13 @@ def handle_options(argv):
   parser.add_argument('-d', '--desc', help='The directory that contains bridge descriptors')
   parser.add_argument('-e', '--ei', help='The directory that contains bridge extra-info documents')
   parser.add_argument('-n', '--ns', help='The directory that contains bridge networkstatus documents')
+  parser.add_argument('-s', '--nsfile', help='The file path to a specific bridge networkstatus document')
   parser.add_argument('-o', '--output', help='The directory where the output is saved')
   parser.add_argument('-a', '--parse_all', help='Parse all documents, not only the most recent')
 
   args = parser.parse_args()
-  print "%r" % args
-  return args.desc, args.ei, args.ns, args.output
-  #fn_descriptors_dir, fn_extrainfo_dir, fn_networkstatus_dir, fn_output_dir
+  return args.desc, args.ei, args.ns, args.nsfile, args.output, parser.print_help
 
-
-
-def usage(exe):
-  """Print the helpful description"""
-  helpful = ("syntax: %s [-a] <path/to/descriptors> "
-            "<path/to/extra-info documents> <path/to/networkstatuses> "
-            "<path/to/outputdir>"
-            "\n\n"
-            "  -a      Parse all files, the entire available history."
-            "\n            only parses the most recent, by default."
-	    % exe)
-  print "%s" % helpful
-  sys.exit()
-      
-    
 if __name__ == "__main__":
   csv_filename = 'bridges.csv'
   parse_all = False
@@ -539,28 +530,54 @@ if __name__ == "__main__":
   (fn_descriptors_dir,
   fn_extrainfo_dir,
   fn_networkstatus_dir,
-  fn_output_dir) = handle_options(sys.argv)
+  fn_networkstatus_file,
+  fn_output_dir,
+  usage) = handle_options(sys.argv)
 
-  fn_descriptors_path = os.path.abspath(fn_descriptors_dir)
-  fn_extrainfo_path = os.path.abspath(fn_extrainfo_dir)
-  fn_networkstatus_path = os.path.abspath(fn_networkstatus_dir)
-  fn_output_path = os.path.abspath(fn_output_dir)
 
-  if not (os.path.exists(fn_descriptors_path) and
-          os.path.isdir(fn_descriptors_path)):
-    print ("%s is not a path to the directory of bridge descriptors" %
-            fn_descriptors_path)
-    usage(exe)
-  if not (os.path.exists(fn_extrainfo_path) and
-         os.path.isdir(fn_extrainfo_path)):
-    print ("%s is not a path to the directory of bridge extra-info "
-           "documents" % fn_extrainfo_path)
-    usage(exe)
-  if not (os.path.exists(fn_networkstatus_path) and
-          os.path.isdir(fn_networkstatus_path)):
-    print ("%s is not a path to the directory of networkstatus files "
-           % fn_networkstatus_path)
-    usage(exe)
+  if fn_descriptors_dir:
+    fn_descriptors_path = os.path.abspath(fn_descriptors_dir)
+    if not (os.path.exists(fn_descriptors_path) and
+            os.path.isdir(fn_descriptors_path)):
+      print ("\nFatal Error: %s is not a path to a directory of bridge "
+             "descriptors.\n" % fn_descriptors_path)
+      usage()
+      sys.exit()
+  if fn_extrainfo_dir:
+    fn_extrainfo_path = os.path.abspath(fn_extrainfo_dir)
+    if not (os.path.exists(fn_extrainfo_path) and
+           os.path.isdir(fn_extrainfo_path)):
+      print ("\nFatal Error: %s is not a path to a directory of bridge "
+             "extra-info documents.\n" % fn_extrainfo_path)
+      usage()
+      sys.exit()
+  if fn_networkstatus_dir:
+    fn_networkstatus_path = os.path.abspath(fn_networkstatus_dir)
+    if not (os.path.exists(fn_networkstatus_path) and
+            os.path.isdir(fn_networkstatus_path)):
+      print ("\nFatal Error: %s is not a path to a directory of "
+             "networkstatus files.\n"
+             % fn_networkstatus_path)
+      usage()
+      sys.exit()
+  elif fn_networkstatus_file:
+    fn_networkstatus_path = os.path.abspath(fn_networkstatus_file)
+    if not (os.path.exists(fn_networkstatus_path) and
+            os.path.isfile(fn_networkstatus_path)):
+      print ("\nFatal Error: %s is not a networkstatus file.\n"
+             % fn_networkstatus_file)
+      usage()
+      sys.exit()
+  else:
+    print ("\nFatal Error: Please either specify a path to a specific "
+           "file or a directory of networkstatus documents.\n")
+    usage()
+    sys.exit()
+    
+  if fn_output_dir:
+    fn_output_path = os.path.abspath(fn_output_dir)
+  else:
+    fn_output_path = os.getcwd()
 
   bridges = {}
   os.chdir(fn_output_path)
@@ -568,7 +585,15 @@ if __name__ == "__main__":
   if parse_all:
     all_bridges = parse_all_ns(fn_networkstatus_path)
   else:
-    fn_ns = find_most_recent_ns(fn_networkstatus_path)
+    if fn_networkstatus_file:
+      fn_ns = {'name': fn_networkstatus_file, 'date': None}
+      with open(fn_networkstatus_file, 'r') as fd_ns:
+        fn_ns['date'] = find_publication_date_of_ns(fd_ns)
+      if not fn_ns['date']:
+        print "Error: Networkstatus document does not contain a publication date!"
+        sys.exit()
+    else: 
+      fn_ns = find_most_recent_ns(fn_networkstatus_path)
     bridges = parse_bridge_documents(bridges, fn_ns['name'])
     publication_date = fn_ns['date']
 
