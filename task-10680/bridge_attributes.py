@@ -543,10 +543,11 @@ def handle_options(argv):
   parser.add_argument('-n', '--ns', help='The directory that contains bridge networkstatus documents')
   parser.add_argument('-s', '--nsfile', help='The file path to a specific bridge networkstatus document')
   parser.add_argument('-o', '--output', help='The directory where the output is saved')
-  parser.add_argument('-a', '--parse_all', help='Parse all documents, not only the most recent', action='store_true')
+  parser.add_argument('-O', '--output-name', help='The filename where the output is saved')
+  parser.add_argument('-a', '--parse-all', help='Parse all documents, not only the most recent', action='store_true')
 
   args = parser.parse_args()
-  return args.desc, args.ei, args.ns, args.nsfile, args.output, args.parse_all, parser.print_help
+  return args.desc, args.ei, args.ns, args.nsfile, args.output, args.output_name, args.parse_all, parser.print_help
 
 if __name__ == "__main__":
   csv_filename = 'bridges.csv'
@@ -561,6 +562,7 @@ if __name__ == "__main__":
   fn_networkstatus_dir,
   fn_networkstatus_file,
   fn_output_dir,
+  fn_output_file,
   parse_all,
   usage) = handle_options(sys.argv)
 
@@ -607,6 +609,9 @@ if __name__ == "__main__":
     fn_output_path = os.path.abspath(fn_output_dir)
   else:
     fn_output_path = os.getcwd()
+
+  if fn_output_file:
+    csv_filename = fn_output_file
 
   bridges = {}
   os.chdir(fn_output_path)
